@@ -1,4 +1,6 @@
 module Main where
 
+import Mascheya.Core.Repl
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = repl
