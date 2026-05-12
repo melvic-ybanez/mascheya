@@ -1,6 +1,6 @@
 module Mascheya.Core.Repl where
+
 import System.IO (hFlush, stdout)
-import Control.Monad (when)
 import System.Exit (die)
 
 repl :: IO ()
