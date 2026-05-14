@@ -40,8 +40,7 @@ peekN n lexer = if index >= (length $ source lexer)
     then chr 0 else (source lexer) !! index
     where index = current lexer + n - 1
 
--- | Checks if the character is a digit. 
--- 
--- We are abstracting over the built-in `Char.isDigit`
+{- | Checks if the character is a digit. 
+    We are abstracting over the built-in `Char.isDigit` -}
 isDigit :: Char -> Bool
 isDigit = Char.isDigit

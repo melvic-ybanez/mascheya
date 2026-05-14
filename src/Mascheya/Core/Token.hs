@@ -6,6 +6,6 @@ data Token = Token {
     line :: Int
 }
 
-data TokenType = Literals Literals
+data TokenType = Literal Literal | Eof deriving Eq
 
-data Literals = Number Double
+data Literal = Int Int | Str String deriving Eq
