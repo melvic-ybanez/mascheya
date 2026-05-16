@@ -1,24 +1,31 @@
-module Mascheya.Core.Parsers.Parser(Parser) where
+module Mascheya.Core.Parsers.Parser where
 
 import Mascheya.Core.Token
-import Mascheya.Core.Parsers.ParseResult (ParseResult)
+import Mascheya.Core.Parsers.ParseResult (ParseResult, succeed, fromStep, mapValue)
 import Mascheya.Core.Parsers.Types
-import qualified Mascheya.Core.Parsers.ParseResult as ParseResult
 import qualified Mascheya.Core.Token as T
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Ast.Source as S
 import Mascheya.Core.Ast.Source (Expr(..))
+import qualified Mascheya.Core.Parsers.ParseResult as ParseResult
+
+fromTokens :: [Token] -> Parser
+fromTokens tokens = Parser tokens 0
 
 parse :: Parser -> ParseResult [Expr]
-parse parser | isAtEnd parser = ParseResult.succeed [] parser
-parse parser = handle $ fmap ParseResult.fromStep $ parseLiteral parser
+parse parser | isAtEnd parser = succeed [] parser
+parse parser = mapValue (\expr -> [expr]) $ parseExpr parser
+
+parseExpr :: Parser -> ParseResult Expr
+parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
     where handle Nothing = ParseResult.fail Result.Failure parser
-          handle (Just result) = ParseResult.mapValue (\r -> [S.Literal r]) result
+          handle (Just result) = mapValue (\r -> S.Literal r) result
 
 parseLiteral :: Parser -> Maybe (Step S.Literal)
 parseLiteral = fmap next . matchAnyWith pred
     where pred (T.Literal _) = True
           pred _ = False
+
           next result = Step (makeLiteral $ tokenType $ previousToken result) result
             where makeLiteral (T.Literal (T.Int value)) = S.Int value
 

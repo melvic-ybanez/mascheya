@@ -1,7 +1,10 @@
 module Mascheya.Core.Ast.Translation where
+
 import qualified Mascheya.Core.Ast.Source as S
 import qualified Mascheya.Core.Ast.Core as C
 import Mascheya.Core.Parsers.Types (Step(value))
+import Mascheya.Core.Result (Result, succeed)
 
-translation :: S.Expr -> C.Expr
-translation (S.Literal (S.Int value)) =  C.Constant $ C.Number $ fromIntegral value
+translateExpr :: S.Expr -> Result C.Expr
+translateExpr (S.Literal (S.Int value)) = 
+    succeed $ C.Constant $ C.Number $ fromIntegral value

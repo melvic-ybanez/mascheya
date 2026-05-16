@@ -2,6 +2,13 @@ module Mascheya.Core.Repl where
 
 import System.IO (hFlush, stdout)
 import System.Exit (die)
+import qualified Mascheya.Core.Lexer as Lexer
+import qualified Mascheya.Core.Parsers.Parser as Parser
+import Mascheya.Core.Parsers.ParseResult (ParseResult(result))
+import qualified Mascheya.Core.Eval.Eval as Eval
+import Mascheya.Core.Ast.Translation (translateExpr)
+import Debug.Trace (traceShowM)
+import Mascheya.Core.Eval.Value (displayValue)
 
 repl :: IO ()
 repl = do
@@ -10,6 +17,12 @@ repl = do
     input <- getLine
     if input == ":q" then die "Bye!"
     else do
-        putStrLn input
-        putStrLn ""
+        putStrLn $ handleResult $ run input
         repl
+    where run input = do 
+            tokens <- Lexer.scanTokens input
+            sourceExpr <- result $ Parser.parseExpr $ Parser.fromTokens tokens
+            coreExpr <- translateExpr sourceExpr
+            Eval.evalExpr coreExpr
+          handleResult (Left error) = "An error occurred"
+          handleResult (Right value) = displayValue value
