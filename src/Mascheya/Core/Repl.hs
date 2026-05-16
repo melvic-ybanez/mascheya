@@ -8,7 +8,7 @@ import Mascheya.Core.Parsers.ParseResult (ParseResult(result))
 import qualified Mascheya.Core.Eval.Eval as Eval
 import Mascheya.Core.Ast.Translation (translateExpr)
 import Debug.Trace (traceShowM)
-import Mascheya.Core.Eval.Value (displayValue)
+import Mascheya.Core.Display
 
 repl :: IO ()
 repl = do
@@ -24,5 +24,5 @@ repl = do
             sourceExpr <- result $ Parser.parseExpr $ Parser.fromTokens tokens
             coreExpr <- translateExpr sourceExpr
             Eval.evalExpr coreExpr
-          handleResult (Left error) = "An error occurred"
-          handleResult (Right value) = displayValue value
+          handleResult (Left error) = display error
+          handleResult (Right value) = display value

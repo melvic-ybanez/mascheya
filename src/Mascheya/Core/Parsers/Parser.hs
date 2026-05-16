@@ -8,6 +8,7 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Ast.Source as S
 import Mascheya.Core.Ast.Source (Expr(..))
 import qualified Mascheya.Core.Parsers.ParseResult as ParseResult
+import Mascheya.Core.Result (expectedError)
 
 fromTokens :: [Token] -> Parser
 fromTokens tokens = Parser tokens 0
@@ -18,8 +19,10 @@ parse parser = mapValue (\expr -> [expr]) $ parseExpr parser
 
 parseExpr :: Parser -> ParseResult Expr
 parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
-    where handle Nothing = ParseResult.fail Result.Failure parser
+    where handle Nothing = ParseResult.fail error parser
           handle (Just result) = mapValue (\r -> S.Literal r) result
+
+          error = Result.ParseError $ expectedError (peek parser) "expression" "at start"
 
 parseLiteral :: Parser -> Maybe (Step S.Literal)
 parseLiteral = fmap next . matchAnyWith pred

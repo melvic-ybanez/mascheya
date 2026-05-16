@@ -1,7 +1,8 @@
 module Mascheya.Core.Eval.Value where
+import Mascheya.Core.Display (display, Display)
 
-data Value = Number Double deriving Show
+data Value = Int Int deriving Show
 
-displayValue :: Value -> String
-displayValue (Number value) = show value
+instance Display Value where
+    display (Int value) = display value
     

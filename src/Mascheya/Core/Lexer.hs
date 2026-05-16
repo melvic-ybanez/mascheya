@@ -2,12 +2,13 @@
 
 module Mascheya.Core.Lexer where
 
-import Mascheya.Core.Result (Result, succeed)
+import Mascheya.Core.Result (Result, succeed, LexerError (InvalidCharacter), Failure (LexerError))
 import Mascheya.Core.Token (Token(Token), fromLine, TokenType)
 import qualified Data.Char as Char
 import Mascheya.Core.Types
 import Data.Char(chr)
 import qualified Mascheya.Core.Token as Token
+import qualified Mascheya.Core.Result as Result
 
 data Lexer = Lexer {
     source :: String,
@@ -47,6 +48,7 @@ scanNext = scan . prepareNext
 scan :: Scan
 scan lexer = case char of 
     c | isDigit c -> succeed $ scanInt updatedLexer
+    c -> Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
     where (char, updatedLexer) = readAndAdvance lexer
 
 readAndAdvance :: Lexer -> (Char, Lexer)
