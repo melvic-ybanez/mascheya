@@ -6,5 +6,5 @@ import Mascheya.Core.Parsers.Types (Step(value))
 import Mascheya.Core.Result (Result, succeed)
 
 translateExpr :: S.Expr -> Result C.Expr
-translateExpr (S.Literal (S.Int value)) = 
-    succeed $ C.Const $ C.Int $ fromIntegral value
+translateExpr (S.Literal (S.SInt value)) = 
+    succeed $ C.ConstExpr $ C.CInt $ fromIntegral value

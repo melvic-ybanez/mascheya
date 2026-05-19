@@ -1,23 +1,21 @@
 module Mascheya.Core.Ast.Generators where
 
-import Mascheya.Core.Ast.Core (Expr (..), Var (VarData), Const)
+import Mascheya.Core.Ast.Core
 import Test.QuickCheck (Arbitrary, oneof, Gen, sized, frequency)
 import Test.QuickCheck.Arbitrary (Arbitrary(..))
-import qualified Mascheya.Core.Ast.Core as Core
 
 genExpr :: Gen Expr
 genExpr = sized genExpr'
-    where genExpr' 0 = Const <$> genConst
+    where genExpr' 0 = ConstExpr <$> genConst
           genExpr' n = frequency [
-                (1, Const <$> genConst),
-                (2, Var <$> genVar),
-                (3, Lambda <$> genVar <*> genExpr),
-                (4, Application <$> genExpr <*> genExpr)
+                (1, ConstExpr <$> genConst),
+                (2, VarExpr <$> genVar),
+                (3, LambdaExpr <$> (Lambda <$> genVar <*> genExpr)),
+                (4, AppExpr <$> (App <$> genExpr <*> genExpr))
             ]
 
 genVar :: Gen Var
-genVar = VarData <$> arbitrary
+genVar = Var <$> arbitrary
 
 genConst :: Gen Const
-genConst = Core.Int <$> arbitrary
-          
+genConst = CInt <$> arbitrary

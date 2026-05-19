@@ -30,7 +30,7 @@ parseLiteral = fmap next . matchAnyWith pred
           pred _ = False
 
           next result = Step (makeLiteral $ tokenType $ previousToken result) result
-            where makeLiteral (T.Literal (T.Int value)) = S.Int value
+            where makeLiteral (T.Literal (T.Int value)) = S.SInt value
 
 matchAny :: [TokenType] -> Parser -> Maybe Parser
 matchAny tokenTypes = matchAnyWith (\tokenType -> elem tokenType tokenTypes)
