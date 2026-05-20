@@ -21,3 +21,6 @@ tests:
       - QuickCheck 
       - tasty
       - tasty-quickcheck
+
+ghc-options:
+  - -Wall

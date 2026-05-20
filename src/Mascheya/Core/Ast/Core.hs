@@ -49,3 +49,20 @@ occursInBuiltin (ListFunc (Cons e1 e2)) occurs = occurs e1 || occurs e2
 occursInBuiltin (ListFunc (Head e)) occurs = occurs e
 occursInBuiltin (ListFunc (Tail e)) occurs = occurs e
 occursInBuiltin _ _ = False
+
+substitute :: Var -> Expr -> Expr -> Expr
+substitute var1 expr (VarExpr var2) | var1 == var2 = expr
+substitute _ _ varExpr@(VarExpr _) = varExpr
+substitute _ _ constExpr@(ConstExpr _) = constExpr
+substitute var expr (AppExpr (App func arg')) = 
+    AppExpr $ App (substitute var expr func) (substitute var expr arg')
+substitute var expr (LambdaExpr (Lambda param' body')) | var /= param' = substitute var expr body'
+substitute _ _ lambdaExpr@(LambdaExpr _) = lambdaExpr
+substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' builtin
+    where substitute' (ListFunc (Cons head' tail')) = 
+            ListFunc $ Cons (substitute var expr head') (substitute var expr tail')
+          substitute' (ListFunc (Head expr1)) = ListFunc $ Head $ substitute var expr expr1
+          substitute' (ListFunc (Tail expr1)) = ListFunc $ Tail $ substitute var expr expr1
+          substitute' (IfFunc (If cond ifTrue ifFalse)) = 
+            IfFunc $ If cond (substitute var expr ifTrue) (substitute var expr ifFalse)
+          substitute' expr1 = expr1

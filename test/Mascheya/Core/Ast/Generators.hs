@@ -11,7 +11,8 @@ genExpr = sized genExpr'
                 (1, ConstExpr <$> genConst),
                 (2, VarExpr <$> genVar),
                 (3, LambdaExpr <$> (Lambda <$> genVar <*> genExpr)),
-                (4, AppExpr <$> (App <$> genExpr <*> genExpr))
+                (4, AppExpr <$> genApp)
+                -- TODO: Add item for the builtin functions
             ]
 
 genVar :: Gen Var
@@ -19,3 +20,6 @@ genVar = Var <$> arbitrary
 
 genConst :: Gen Const
 genConst = CInt <$> arbitrary
+
+genApp :: Gen App
+genApp = App <$> genExpr <*> genExpr
