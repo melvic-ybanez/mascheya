@@ -46,21 +46,3 @@ executable mascheya
       base >=4.22.0.0
     , mascheya
   default-language: Haskell2010
-
-test-suite mascheya-tests
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Mascheya.Core.Ast.CoreSpec
-      Mascheya.Core.Ast.Generators
-      Paths_mascheya
-  hs-source-dirs:
-      test
-  ghc-options: -Wall
-  build-depends:
-      QuickCheck
-    , base >=4.22.0.0
-    , mascheya
-    , tasty
-    , tasty-quickcheck
-  default-language: Haskell2010

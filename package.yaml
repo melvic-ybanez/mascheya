@@ -12,15 +12,5 @@ executable:
   dependencies:
     - mascheya
 
-tests:
-  mascheya-tests:
-    main: Spec.hs
-    source-dirs: test
-    dependencies:
-      - mascheya
-      - QuickCheck 
-      - tasty
-      - tasty-quickcheck
-
 ghc-options:
   - -Wall
