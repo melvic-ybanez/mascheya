@@ -50,6 +50,10 @@ occursInBuiltin (ListFunc (Head e)) occurs = occurs e
 occursInBuiltin (ListFunc (Tail e)) occurs = occurs e
 occursInBuiltin _ _ = False
 
+apply :: Expr -> Expr -> Expr
+apply (LambdaExpr (Lambda param' body')) arg' = substitute param' arg' body'
+apply expr _ = expr -- TODO: Revisit this
+
 substitute :: Var -> Expr -> Expr -> Expr
 substitute var1 expr (VarExpr var2) | var1 == var2 = expr
 substitute _ _ varExpr@(VarExpr _) = varExpr
@@ -66,3 +70,18 @@ substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' bu
           substitute' (IfFunc (If cond ifTrue ifFalse)) = 
             IfFunc $ If cond (substitute var expr ifTrue) (substitute var expr ifFalse)
           substitute' expr1 = expr1
+
+mkVar :: String -> Expr
+mkVar= VarExpr . Var
+
+mkInt :: Int -> Expr
+mkInt = ConstExpr . CInt
+
+mkArith :: Arith -> Expr
+mkArith = BuiltinFuncExpr . ArithFunc
+
+mkLambda :: Var -> Expr -> Expr
+mkLambda param' = LambdaExpr . Lambda param'
+
+mkApp :: Expr -> Expr -> Expr
+mkApp callable' = AppExpr . App callable'
