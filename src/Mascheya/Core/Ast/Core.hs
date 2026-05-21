@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+
 module Mascheya.Core.Ast.Core where
 
 data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
@@ -17,6 +19,64 @@ data Logical = And | Or | Not deriving Show
 data CBool = CTrue | CFalse deriving Show
 data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
+
+apply :: Expr -> Expr -> Expr
+apply (LambdaExpr (Lambda param' body')) arg' = substitute param' arg' body'
+apply expr _ = expr -- TODO: Revisit this
+
+substitute :: Var -> Expr -> Expr -> Expr
+substitute var1 expr (VarExpr var2) | var1 == var2 = expr
+substitute _ _ varExpr@(VarExpr _) = varExpr
+substitute _ _ constExpr@(ConstExpr _) = constExpr
+substitute var expr (AppExpr (App func arg')) = 
+    AppExpr $ App (substitute var expr func) $ substitute var expr arg'
+substitute var expr (LambdaExpr (Lambda param' body')) | var /= param' = 
+    substitute var expr body'
+substitute _ _ lambdaExpr@(LambdaExpr _) = lambdaExpr
+substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' builtin
+    where substitute' (ListFunc (Cons head' tail')) = 
+            ListFunc $ Cons (substitute var expr head') (substitute var expr tail')
+          substitute' (ListFunc (Head expr1)) = ListFunc $ Head $ substitute var expr expr1
+          substitute' (ListFunc (Tail expr1)) = ListFunc $ Tail $ substitute var expr expr1
+          substitute' (IfFunc (If cond ifTrue ifFalse)) = 
+            IfFunc $ If cond (substitute var expr ifTrue) $ substitute var expr ifFalse
+          substitute' expr1 = expr1
+
+alphaConvert :: Var -> [Var] -> Expr -> Expr
+alphaConvert varToRename taken = convert 
+    where convert constExpr@(ConstExpr _) = constExpr
+          convert (VarExpr var1) | varToRename == var1 = VarExpr $ newVar
+          convert varExpr@(VarExpr _) = varExpr
+          convert (AppExpr (App func arg')) = AppExpr $ App (convert func) $ convert arg'
+          convert (LambdaExpr (Lambda param' body')) = LambdaExpr $ Lambda newParam $ convert body'
+            where newParam = if param' == varToRename then newVar else param'
+          convert (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ convert' builtin
+            where convert' (ListFunc (Cons head' tail')) = ListFunc $ Cons (convert head') $ convert tail'
+                  convert' (ListFunc (Head expr)) = ListFunc $ Head $ convert expr
+                  convert' (ListFunc (Tail expr)) = ListFunc $ Tail $ convert expr
+                  convert' (IfFunc (If cond ifTrue ifFalse)) = 
+                    IfFunc $ If cond (convert ifTrue) $ convert ifFalse
+                  convert' expr = expr
+          newVar = genUniqueVar taken
+
+freeVars :: Expr -> [Var]
+freeVars = flip freeVars' []
+    where freeVars' (ConstExpr _) = id
+          freeVars' (VarExpr var) = (var :)
+          freeVars' (AppExpr (App func arg')) = \vars -> freeVars' func vars ++ freeVars' arg' vars
+          freeVars' (LambdaExpr (Lambda param' body')) = filter (\x -> not $ x == param') . freeVars' body'
+          freeVars' (BuiltinFuncExpr (ListFunc (Cons head' tail'))) = 
+            \vars -> freeVars' head' vars ++ freeVars' tail' vars 
+          freeVars' (BuiltinFuncExpr (ListFunc (Head expr))) = freeVars' expr
+          freeVars' (BuiltinFuncExpr (ListFunc (Tail expr))) = freeVars' expr
+          freeVars' (BuiltinFuncExpr (IfFunc (If _ ifTrue ifFalse))) = 
+            \vars -> freeVars' ifTrue vars ++ freeVars' ifFalse vars
+          freeVars' (BuiltinFuncExpr _) = id
+
+genUniqueVar :: [Var] -> Var
+genUniqueVar vars = gen 0
+    where gen counter = if newVar `elem` vars then gen $ counter + 1 else newVar
+            where newVar = Var $ "a" ++ show counter
 
 {- | Checks if the given variable occurs free in the expression. 
     Note that we are not using the phrase 'is free' because it gives the impression
@@ -49,27 +109,6 @@ occursInBuiltin (ListFunc (Cons e1 e2)) occurs = occurs e1 || occurs e2
 occursInBuiltin (ListFunc (Head e)) occurs = occurs e
 occursInBuiltin (ListFunc (Tail e)) occurs = occurs e
 occursInBuiltin _ _ = False
-
-apply :: Expr -> Expr -> Expr
-apply (LambdaExpr (Lambda param' body')) arg' = substitute param' arg' body'
-apply expr _ = expr -- TODO: Revisit this
-
-substitute :: Var -> Expr -> Expr -> Expr
-substitute var1 expr (VarExpr var2) | var1 == var2 = expr
-substitute _ _ varExpr@(VarExpr _) = varExpr
-substitute _ _ constExpr@(ConstExpr _) = constExpr
-substitute var expr (AppExpr (App func arg')) = 
-    AppExpr $ App (substitute var expr func) (substitute var expr arg')
-substitute var expr (LambdaExpr (Lambda param' body')) | var /= param' = substitute var expr body'
-substitute _ _ lambdaExpr@(LambdaExpr _) = lambdaExpr
-substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' builtin
-    where substitute' (ListFunc (Cons head' tail')) = 
-            ListFunc $ Cons (substitute var expr head') (substitute var expr tail')
-          substitute' (ListFunc (Head expr1)) = ListFunc $ Head $ substitute var expr expr1
-          substitute' (ListFunc (Tail expr1)) = ListFunc $ Tail $ substitute var expr expr1
-          substitute' (IfFunc (If cond ifTrue ifFalse)) = 
-            IfFunc $ If cond (substitute var expr ifTrue) (substitute var expr ifFalse)
-          substitute' expr1 = expr1
 
 mkVar :: String -> Expr
 mkVar= VarExpr . Var
