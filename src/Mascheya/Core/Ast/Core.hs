@@ -6,7 +6,7 @@ data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const
     | AppExpr App | BuiltinFuncExpr BuiltinFunc
     deriving Show
 
-data Var = Var String deriving (Show, Eq)
+newtype Var = Var String deriving (Show, Eq)
 data Const = CInt Int | Char Char deriving Show
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
@@ -31,7 +31,10 @@ substitute _ _ constExpr@(ConstExpr _) = constExpr
 substitute var expr (AppExpr (App func arg')) = 
     AppExpr $ App (substitute var expr func) $ substitute var expr arg'
 substitute var expr (LambdaExpr (Lambda param' body')) | var /= param' = 
-    substitute var expr body'
+    substitute var alphaConvertedExpr body'
+    where alphaConvertedExpr = if occursFree param' expr 
+            then alphaConvert param' (freeVars expr ++ freeVars body') body'
+            else expr
 substitute _ _ lambdaExpr@(LambdaExpr _) = lambdaExpr
 substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' builtin
     where substitute' (ListFunc (Cons head' tail')) = 
@@ -111,7 +114,7 @@ occursInBuiltin (ListFunc (Tail e)) occurs = occurs e
 occursInBuiltin _ _ = False
 
 mkVar :: String -> Expr
-mkVar= VarExpr . Var
+mkVar = VarExpr . Var
 
 mkInt :: Int -> Expr
 mkInt = ConstExpr . CInt
