@@ -33,6 +33,8 @@ library
   ghc-options: -Wall
   build-depends:
       base >=4.22.0.0
+    , containers
+    , mtl
   default-language: Haskell2010
 
 executable mascheya
@@ -44,5 +46,7 @@ executable mascheya
   ghc-options: -Wall
   build-depends:
       base >=4.22.0.0
+    , containers
     , mascheya
+    , mtl
   default-language: Haskell2010

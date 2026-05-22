@@ -11,7 +11,7 @@ import qualified Mascheya.Core.Parsers.ParseResult as ParseResult
 import Mascheya.Core.Result (expectedError)
 
 fromTokens :: [Token] -> Parser
-fromTokens tokens = Parser tokens 0
+fromTokens = flip Parser 0
 
 parse :: Parser -> ParseResult [Expr]
 parse parser | isAtEnd parser = succeed [] parser

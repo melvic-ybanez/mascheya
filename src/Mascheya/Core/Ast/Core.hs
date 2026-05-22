@@ -2,11 +2,15 @@
 
 module Mascheya.Core.Ast.Core where
 
+import qualified Data.Map as Map
+import Data.Map (Map)
+import Control.Monad.Reader (ReaderT(ReaderT, runReaderT))
+
 data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
     | AppExpr App | BuiltinFuncExpr BuiltinFunc
     deriving Show
 
-newtype Var = Var String deriving (Show, Eq)
+newtype Var = Var String deriving (Show, Eq, Ord)
 data Const = CInt Int | Char Char deriving Show
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
@@ -19,6 +23,16 @@ data Logical = And | Or | Not deriving Show
 data CBool = CTrue | CFalse deriving Show
 data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
+
+newtype Env = Env (Map Var Expr)
+
+normalize :: Expr -> Env -> Maybe Expr
+normalize (ConstExpr _) = const Nothing
+normalize (VarExpr var) = varLookup var
+normalize (AppExpr (App (LambdaExpr lambda) arg')) = normalize $ betaReduce lambda arg'
+normalize (AppExpr (App func arg')) = runReaderT $ ReaderT (normalize func) >>= \normalizedFunc -> 
+    ReaderT $ normalize $ AppExpr $ App normalizedFunc arg'
+normalize _ = undefined     -- TODO: Implement the rest
 
 betaReduce :: Lambda -> Expr -> Expr
 betaReduce (Lambda param' body') arg' = substitute param' arg' body'
@@ -44,7 +58,7 @@ substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' bu
             IfFunc $ If cond (substitute var expr ifTrue) $ substitute var expr ifFalse
           substitute' expr1 = expr1
 
-{- | Alpha conversion. Note that this differs from the textbook definition which usually
+{- | Alpha-conversion. Note that this differs from the textbook definition which usually
     goes `\x -> E <-> \y -> E[y/x]`, because here we are relying on a `taken` param which serves as
     an "environment" containing the free variables. This definition, however, is very useful in cases
     where the environment encompasses multiple expressions, as in the definition of `substitute` -}
@@ -130,3 +144,6 @@ mkLambda param' = LambdaExpr . Lambda param'
 
 mkApp :: Expr -> Expr -> Expr
 mkApp callable' = AppExpr . App callable'
+
+varLookup :: Var -> Env -> Maybe Expr
+varLookup var (Env underlying) = Map.lookup var underlying

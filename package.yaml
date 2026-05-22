@@ -2,6 +2,8 @@ name: mascheya
 
 dependencies:
   - base >=4.22.0.0
+  - containers
+  - mtl
 
 library:
   source-dirs: src
