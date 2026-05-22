@@ -20,9 +20,8 @@ data CBool = CTrue | CFalse deriving Show
 data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
 
-apply :: Expr -> Expr -> Expr
-apply (LambdaExpr (Lambda param' body')) arg' = substitute param' arg' body'
-apply expr _ = expr -- TODO: Revisit this
+betaReduce :: Lambda -> Expr -> Expr
+betaReduce (Lambda param' body') arg' = substitute param' arg' body'
 
 substitute :: Var -> Expr -> Expr -> Expr
 substitute var1 expr (VarExpr var2) | var1 == var2 = expr
@@ -45,6 +44,10 @@ substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' bu
             IfFunc $ If cond (substitute var expr ifTrue) $ substitute var expr ifFalse
           substitute' expr1 = expr1
 
+{- | Alpha conversion. Note that this differs from the textbook definition which usually
+    goes `\x -> E <-> \y -> E[y/x]`, because here we are relying on a `taken` param which serves as
+    an "environment" containing the free variables. This definition, however, is very useful in cases
+    where the environment encompasses multiple expressions, as in the definition of `substitute` -}
 alphaConvert :: Var -> [Var] -> Expr -> Expr
 alphaConvert varToRename taken = convert 
     where convert constExpr@(ConstExpr _) = constExpr
