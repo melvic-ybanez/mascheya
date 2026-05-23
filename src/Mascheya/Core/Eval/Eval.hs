@@ -1,11 +1,12 @@
 module Mascheya.Core.Eval.Eval where
-import Mascheya.Core.Ast.Core (Expr (ConstExpr))
-import Mascheya.Core.Eval.Value (Value)
+import Mascheya.Core.Eval.Value (Out)
 import qualified Mascheya.Core.Ast.Core as C
-import Mascheya.Core.Result (Result, succeed)
 import qualified Mascheya.Core.Eval.Value as Value
+import Mascheya.Core.Ast.Core (Expr (VarExpr, ConstExpr))
+import Mascheya.Core.Eval.Env (Env)
+import qualified Mascheya.Core.Result as Result
+import qualified Mascheya.Core.Eval.Env as Env
 
-type Out = Result Value
-
-evalExpr :: Expr -> Out
-evalExpr (ConstExpr (C.CInt value)) = succeed $ Value.Int value
+evalExpr :: Expr -> Env -> Out
+evalExpr (VarExpr var) = Env.lookup var
+evalExpr (ConstExpr (C.CInt value)) = \_ -> Result.succeed $ Value.Int value

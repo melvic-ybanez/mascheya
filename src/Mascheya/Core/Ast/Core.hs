@@ -1,16 +1,13 @@
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module Mascheya.Core.Ast.Core where
-
-import qualified Data.Map as Map
-import Data.Map (Map)
-import Control.Monad.Reader (ReaderT(ReaderT, runReaderT))
+import Mascheya.Core.Token (Token (lexeme))
 
 data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
     | AppExpr App | BuiltinFuncExpr BuiltinFunc
     deriving Show
 
-newtype Var = Var String deriving (Show, Eq, Ord)
+newtype Var = Var Token deriving (Show, Eq)
 data Const = CInt Int | Char Char deriving Show
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
@@ -23,16 +20,6 @@ data Logical = And | Or | Not deriving Show
 data CBool = CTrue | CFalse deriving Show
 data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
-
-newtype Env = Env (Map Var Expr)
-
-normalize :: Expr -> Env -> Maybe Expr
-normalize (ConstExpr _) = const Nothing
-normalize (VarExpr var) = varLookup var
-normalize (AppExpr (App (LambdaExpr lambda) arg')) = normalize $ betaReduce lambda arg'
-normalize (AppExpr (App func arg')) = runReaderT $ ReaderT (normalize func) >>= \normalizedFunc -> 
-    ReaderT $ normalize $ AppExpr $ App normalizedFunc arg'
-normalize _ = undefined     -- TODO: Implement the rest
 
 betaReduce :: Lambda -> Expr -> Expr
 betaReduce (Lambda param' body') arg' = substitute param' arg' body'
@@ -63,7 +50,7 @@ substitute var expr (BuiltinFuncExpr builtin) = BuiltinFuncExpr $ substitute' bu
     an "environment" containing the free variables. This definition, however, is very useful in cases
     where the environment encompasses multiple expressions, as in the definition of `substitute` -}
 alphaConvert :: Var -> [Var] -> Expr -> Expr
-alphaConvert varToRename taken = convert 
+alphaConvert varToRename@(Var token) taken = convert 
     where convert constExpr@(ConstExpr _) = constExpr
           convert (VarExpr var1) | varToRename == var1 = VarExpr $ newVar
           convert varExpr@(VarExpr _) = varExpr
@@ -77,7 +64,7 @@ alphaConvert varToRename taken = convert
                   convert' (IfFunc (If cond ifTrue ifFalse)) = 
                     IfFunc $ If cond (convert ifTrue) $ convert ifFalse
                   convert' expr = expr
-          newVar = genUniqueVar taken
+          newVar = genUniqueVar taken token
 
 freeVars :: Expr -> [Var]
 freeVars = flip freeVars' []
@@ -93,10 +80,10 @@ freeVars = flip freeVars' []
             \vars -> freeVars' ifTrue vars ++ freeVars' ifFalse vars
           freeVars' (BuiltinFuncExpr _) = id
 
-genUniqueVar :: [Var] -> Var
-genUniqueVar vars = gen 0
+genUniqueVar :: [Var] -> Token -> Var
+genUniqueVar vars token = gen 0
     where gen counter = if newVar `elem` vars then gen $ counter + 1 else newVar
-            where newVar = Var $ "a" ++ show counter
+            where newVar = Var $ token { lexeme = "a" ++ show counter }
 
 {- | Checks if the given variable occurs free in the expression. 
     Note that we are not using the phrase 'is free' because it gives the impression
@@ -130,7 +117,7 @@ occursInBuiltin (ListFunc (Head e)) occurs = occurs e
 occursInBuiltin (ListFunc (Tail e)) occurs = occurs e
 occursInBuiltin _ _ = False
 
-mkVar :: String -> Expr
+mkVar :: Token -> Expr
 mkVar = VarExpr . Var
 
 mkInt :: Int -> Expr
@@ -144,6 +131,3 @@ mkLambda param' = LambdaExpr . Lambda param'
 
 mkApp :: Expr -> Expr -> Expr
 mkApp callable' = AppExpr . App callable'
-
-varLookup :: Var -> Env -> Maybe Expr
-varLookup var (Env underlying) = Map.lookup var underlying

@@ -7,8 +7,8 @@ import qualified Mascheya.Core.Parsers.Parser as Parser
 import Mascheya.Core.Parsers.ParseResult (ParseResult(result))
 import qualified Mascheya.Core.Eval.Eval as Eval
 import Mascheya.Core.Ast.Translation (translateExpr)
-import Debug.Trace (traceShowM)
 import Mascheya.Core.Display
+import qualified Mascheya.Core.Eval.Env as Env
 
 repl :: IO ()
 repl = do
@@ -23,6 +23,6 @@ repl = do
             tokens <- Lexer.scanTokens input
             sourceExpr <- result $ Parser.parseExpr $ Parser.fromTokens tokens
             coreExpr <- translateExpr sourceExpr
-            Eval.evalExpr coreExpr
-          handleResult (Left error) = display error
+            Eval.evalExpr coreExpr Env.empty
+          handleResult (Left error') = display error'
           handleResult (Right value) = display value
