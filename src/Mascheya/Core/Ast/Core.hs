@@ -8,7 +8,7 @@ data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const
     deriving Show
 
 newtype Var = Var Token deriving (Show, Eq)
-data Const = CInt Int | Char Char deriving Show
+data Const = CInt Int | CChar Char | CFloat Float | CDouble Double deriving Show
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
 
