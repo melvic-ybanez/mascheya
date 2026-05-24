@@ -23,6 +23,6 @@ repl = do
             tokens <- Lexer.scanTokens input
             sourceExpr <- result $ Parser.parseExpr $ Parser.fromTokens tokens
             coreExpr <- translateExpr sourceExpr
-            Eval.evalExpr coreExpr Env.empty
+            Eval.eval coreExpr Env.empty
           handleResult (Left error') = display error'
           handleResult (Right value) = display value
