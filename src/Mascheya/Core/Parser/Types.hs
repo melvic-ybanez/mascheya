@@ -1,4 +1,4 @@
-module Mascheya.Core.Parsers.Types where
+module Mascheya.Core.Parser.Types where
 import Mascheya.Core.Token
 
 data Parser = Parser {

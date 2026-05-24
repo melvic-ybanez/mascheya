@@ -1,8 +1,8 @@
-module Mascheya.Core.Parsers.ParseResult where
+module Mascheya.Core.Parser.ParseResult where
 
 import Mascheya.Core.Result(Result)
 import qualified Mascheya.Core.Result as Result
-import Mascheya.Core.Parsers.Types
+import Mascheya.Core.Parser.Types
 import Data.List.NonEmpty (NonEmpty)
 import Prelude hiding (map)
 

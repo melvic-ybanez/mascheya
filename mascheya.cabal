@@ -16,14 +16,14 @@ library
       Mascheya.Core.Ast.Source
       Mascheya.Core.Ast.Translation
       Mascheya.Core.Display
+      Mascheya.Core.Eval
       Mascheya.Core.Eval.Env
-      Mascheya.Core.Eval.Eval
       Mascheya.Core.Eval.Value
       Mascheya.Core.Lexemes
       Mascheya.Core.Lexer
-      Mascheya.Core.Parsers.Parser
-      Mascheya.Core.Parsers.ParseResult
-      Mascheya.Core.Parsers.Types
+      Mascheya.Core.Parser
+      Mascheya.Core.Parser.ParseResult
+      Mascheya.Core.Parser.Types
       Mascheya.Core.Repl
       Mascheya.Core.Result
       Mascheya.Core.Token

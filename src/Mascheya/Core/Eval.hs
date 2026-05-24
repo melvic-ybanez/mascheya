@@ -1,4 +1,4 @@
-module Mascheya.Core.Eval.Eval where
+module Mascheya.Core.Eval where
 
 import Mascheya.Core.Eval.Value (Out, Value (..), Const (IntVal, FloatVal, DoubleVal, CharVal, BoolVal))
 import qualified Mascheya.Core.Ast.Core as C

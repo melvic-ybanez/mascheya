@@ -1,13 +1,13 @@
-module Mascheya.Core.Parsers.Parser where
+module Mascheya.Core.Parser where
 
 import Mascheya.Core.Token
-import Mascheya.Core.Parsers.ParseResult (ParseResult, succeed, fromStep, mapValue)
-import Mascheya.Core.Parsers.Types
+import Mascheya.Core.Parser.ParseResult (ParseResult, succeed, fromStep, mapValue)
+import Mascheya.Core.Parser.Types
 import qualified Mascheya.Core.Token as T
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Ast.Source as S
 import Mascheya.Core.Ast.Source (Expr(..))
-import qualified Mascheya.Core.Parsers.ParseResult as ParseResult
+import qualified Mascheya.Core.Parser.ParseResult as ParseResult
 import Mascheya.Core.Result (expectedError)
 
 fromTokens :: [Token] -> Parser

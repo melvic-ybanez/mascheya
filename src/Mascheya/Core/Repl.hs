@@ -3,9 +3,9 @@ module Mascheya.Core.Repl where
 import System.IO (hFlush, stdout)
 import System.Exit (die)
 import qualified Mascheya.Core.Lexer as Lexer
-import qualified Mascheya.Core.Parsers.Parser as Parser
-import Mascheya.Core.Parsers.ParseResult (ParseResult(result))
-import qualified Mascheya.Core.Eval.Eval as Eval
+import qualified Mascheya.Core.Parser as Parser
+import Mascheya.Core.Parser.ParseResult (ParseResult(result))
+import qualified Mascheya.Core.Eval as Eval
 import Mascheya.Core.Ast.Translation (translateExpr)
 import Mascheya.Core.Display
 import qualified Mascheya.Core.Eval.Env as Env
