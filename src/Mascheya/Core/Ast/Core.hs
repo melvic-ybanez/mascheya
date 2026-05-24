@@ -8,16 +8,15 @@ data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const
     deriving Show
 
 newtype Var = Var Token deriving (Show, Eq)
-data Const = CInt Int | CChar Char | CFloat Float | CDouble Double deriving Show
+data Const = CInt Int | CChar Char | CFloat Float | CDouble Double | CBool Bool deriving Show
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
 
-data BuiltinFunc = ArithFunc Arith | LogicalFunc Logical | BoolFunc CBool | IfFunc If | ListFunc CList
+data BuiltinFunc = ArithFunc Arith | LogicalFunc Logical | IfFunc If | ListFunc CList
     deriving Show
 
 data Arith = Plus | Minus | Times | Divide deriving Show
 data Logical = And | Or | Not deriving Show
-data CBool = CTrue | CFalse deriving Show
 data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
 

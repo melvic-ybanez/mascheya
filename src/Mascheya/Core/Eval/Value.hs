@@ -4,7 +4,7 @@ import Mascheya.Core.Result (Result)
 
 data Value = ConstVal Const | AppVal Value Value | LambdaVal (Value -> Out)
 
-data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char 
+data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | BoolVal Bool
 
 type Out = Result Value
 
@@ -18,4 +18,5 @@ instance Display Const where
     display (FloatVal float) = display float
     display (DoubleVal double) = display double
     display (CharVal char) = display char
+    display (BoolVal bool) = display bool
     

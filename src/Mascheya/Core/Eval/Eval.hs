@@ -1,6 +1,6 @@
 module Mascheya.Core.Eval.Eval where
 
-import Mascheya.Core.Eval.Value (Out, Value (..), Const (IntVal, FloatVal, DoubleVal, CharVal))
+import Mascheya.Core.Eval.Value (Out, Value (..), Const (IntVal, FloatVal, DoubleVal, CharVal, BoolVal))
 import qualified Mascheya.Core.Ast.Core as C
 import Mascheya.Core.Ast.Core (Expr (..), App (App), Lambda (Lambda), Var (Var))
 import Mascheya.Core.Eval.Env (Env, assign)
@@ -24,3 +24,4 @@ evalConst (C.CInt int) = IntVal int
 evalConst (C.CFloat float) = FloatVal float
 evalConst (C.CDouble double) = DoubleVal double
 evalConst (C.CChar char) = CharVal char
+evalConst (C.CBool bool) = BoolVal bool

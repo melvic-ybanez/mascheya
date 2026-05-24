@@ -15,6 +15,7 @@ instance Display Char
 instance Display Int
 instance Display Float
 instance Display Double
+instance Display Bool
 
 instance (Display a) => Display [a] where
     display displayables = intercalate "\n" $ fmap display displayables
