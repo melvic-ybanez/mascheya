@@ -18,10 +18,9 @@ eval (AppExpr (App func arg)) = runReaderT $ do
 eval (LambdaExpr (Lambda (Var param) body)) = \env ->
     Result.succeed $ LambdaVal $ \paramValue -> eval body $ assign (lexeme param) paramValue env
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ evalConst const'
+    where evalConst (C.CInt int) = IntVal int 
+          evalConst (C.CFloat float) = FloatVal float
+          evalConst (C.CDouble double) = DoubleVal double
+          evalConst (C.CChar char) = CharVal char
+          evalConst (C.CBool bool) = BoolVal bool
 
-evalConst :: C.Const -> Const
-evalConst (C.CInt int) = IntVal int 
-evalConst (C.CFloat float) = FloatVal float
-evalConst (C.CDouble double) = DoubleVal double
-evalConst (C.CChar char) = CharVal char
-evalConst (C.CBool bool) = BoolVal bool
