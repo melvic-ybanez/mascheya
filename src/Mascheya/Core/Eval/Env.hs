@@ -6,16 +6,31 @@ import qualified Data.Map as Map
 import Mascheya.Core.Token (Token(lexeme))
 import qualified Mascheya.Core.Result as Result
 import Mascheya.Core.Result (Failure(RuntimeError), undefinedVar)
+import Prelude hiding (lookup)
 import Mascheya.Core.Types (Endo)
 
-newtype Env = Env (Map String Value)
+type Table = Map String Value
+
+data Env = LocalEnv Local | GlobalEnv Global
+
+data Local = Local Table Env
+data Global = Global Table
 
 empty :: Env
-empty = Env Map.empty
+empty = GlobalEnv $ Global Map.empty
+
+table :: Env -> Table
+table (LocalEnv (Local table' _)) = table'
+table (GlobalEnv (Global table')) = table'
 
 lookup :: Var -> Env -> Out
-lookup (Var token) (Env underlying) = maybe (Result.fail $ RuntimeError $ undefinedVar token) Right 
-    $ Map.lookup (lexeme token) underlying
+lookup var@(Var token) env = maybe lookupOuter Right $ Map.lookup (lexeme token) (table env)
+    where lookupOuter = case env of
+            (GlobalEnv _) -> Result.fail $ RuntimeError $ undefinedVar token
+            (LocalEnv (Local _ enclosing)) -> lookup var enclosing
 
 assign :: String -> Value -> Endo Env
-assign varName value (Env underlying) = Env $ Map.insert varName value underlying
+assign varName value (LocalEnv (Local table' enclosing)) = 
+    LocalEnv $ Local (Map.insert varName value table') enclosing
+assign varName value (GlobalEnv (Global table')) = 
+    GlobalEnv $ Global (Map.insert varName value table')
