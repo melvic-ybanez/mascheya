@@ -7,6 +7,7 @@ import Data.List.NonEmpty
 import Mascheya.Core.Display (Display (display))
 import Mascheya.Core.Token (Token(Token, line, tokenType, lexeme), TokenType (Eof))
 import Prelude hiding (error)
+import Mascheya.Core.Ast.Core (Expr)
 
 type Result = Either (NonEmpty Failure) 
 
@@ -31,9 +32,7 @@ data ExpectedDetails = ExpectedDetails {
     start :: Token, expected :: String, source :: String, at :: String
 } deriving Show
 
-data RuntimeError = RuntimeErrorData { kind :: RuntimeErrorKind, token :: Token, message :: String } deriving Show
-
-data RuntimeErrorKind = UndefinedVariable deriving Show
+data RuntimeError = UndefinedVariable Token String | NotAFunction Expr String deriving Show
 
 instance Display Failure where
     display (LexerError error) = "Lexer Error: " ++ display error 
@@ -51,8 +50,11 @@ instance Display ParseError where
         displayLineAndMessage line "Invalid assignment target"
 
 instance Display RuntimeError where
-    display RuntimeErrorData { token=token@Token{ line }, message } = 
-        message ++ "\n" ++ displayLine line ++ ". " ++ display token 
+    display = ("Runtime Error: " ++ ) . display' 
+        where display' (UndefinedVariable token message) = 
+                message ++ "\n" ++ displayLine (line token) ++ ". " ++ display token 
+              display' (NotAFunction expr message) = 
+                message ++ "\n" ++ display expr ++ ". " 
 
 expectedError :: Token -> String -> String -> ParseError
 expectedError start expected at = Expected $ case (tokenType start) of
@@ -70,4 +72,7 @@ displayLineAndMessage :: Int -> String -> String
 displayLineAndMessage = flip displayFullLine ""
 
 undefinedVar :: Token -> RuntimeError 
-undefinedVar token = RuntimeErrorData UndefinedVariable token $ "Undefined variable" ++ display token
+undefinedVar token = UndefinedVariable token $ "Undefined variable: " ++ display token
+
+notAFunction :: Expr -> RuntimeError
+notAFunction = flip NotAFunction "Not a function"
