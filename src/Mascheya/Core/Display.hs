@@ -22,3 +22,7 @@ instance (Display a) => Display [a] where
 
 instance (Display a) => Display (NonEmpty a) where
     display = display . toList
+
+instance (Display a, Display b) => Display (Either a b) where
+    display (Left a) = display a
+    display (Right b) = display b

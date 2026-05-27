@@ -6,7 +6,7 @@ import Mascheya.Core.Display (Display(display))
 
 data Value = ThunkVal Thunk | FunctionVal Function | ConstVal Const
 
-data Thunk = Evaluated Value | Delayed Expr (Env Value)
+data Thunk = Thunk Out
 
 data Function = Function { param :: Var, body :: Expr, closureEnv :: Env Value }
 
@@ -27,8 +27,7 @@ instance Display Const where
     display (BoolVal bool) = display bool
 
 instance Display Thunk where
-    display (Evaluated value) = display value
-    display (Delayed expr _) = "<thunk: " ++ display expr ++ ">"
+    display (Thunk result) = display result
     
 instance Display Function where
     display (Function _ _ _) = "<closure>"

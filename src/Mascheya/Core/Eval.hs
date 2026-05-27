@@ -16,7 +16,7 @@ eval (AppExpr (App func arg)) = runReaderT $ ReaderT (eval func) >>= handleFuncV
     where handleFuncVal (FunctionVal closure) = ReaderT $ eval (body closure) . extendEnv closure
           handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
 
-          argThunk = Delayed arg
+          argThunk = Thunk . eval arg
           extendEnv (Function param _ env) oldEnv = Env.extend param (ThunkVal $ argThunk oldEnv) env
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
     where eval' (C.CInt int) = IntVal int
@@ -26,7 +26,6 @@ eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
           eval' (C.CBool bool) = BoolVal bool
 
 force :: Value -> Out
-force (ThunkVal (Evaluated value)) = Result.succeed value
-force (ThunkVal (Delayed expr env)) = eval expr env
+force (ThunkVal (Thunk value')) = value'
 force val = Result.succeed val
 
