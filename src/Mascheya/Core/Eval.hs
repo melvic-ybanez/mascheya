@@ -1,32 +1,32 @@
 module Mascheya.Core.Eval where
 
-import Mascheya.Core.Eval.Value (Out, Value (..), Thunk (Delayed, Evaluated), Const (..), Closure (Closure), body)
+import Mascheya.Core.Eval.Value 
 import qualified Mascheya.Core.Ast.Core as C
-import Mascheya.Core.Ast.Core (Expr (..), App (App), Lambda (Lambda))
+import Mascheya.Core.Ast.Core hiding (body)
 import Mascheya.Core.Eval.Env (Env)
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result (notAFunction, Failure (RuntimeError))
+import Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
 
-eval :: Expr -> Env Thunk -> Out
+eval :: Expr -> Env Value -> Out
 eval (VarExpr var) = (>>= force) . Env.lookup var
-eval (LambdaExpr (Lambda param body)) = Result.succeed . ClosureVal . Closure param body
-eval (AppExpr (App func arg)) = \env -> eval func env 
-    >>= handleFuncVal 
-    >>= \funcVal -> eval (body funcVal) (extendedEnv funcVal env)
-    where handleFuncVal (ClosureVal closure) = Result.succeed closure
-          handleFuncVal _ = Result.fail $ RuntimeError $ notAFunction func
-          
-          argThunk = Delayed arg
-          extendedEnv (Closure param _ env) oldEnv = Env.extend param (argThunk oldEnv) env
-eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ evalConst const'
-    where evalConst (C.CInt int) = IntVal int 
-          evalConst (C.CFloat float) = FloatVal float
-          evalConst (C.CDouble double) = DoubleVal double
-          evalConst (C.CChar char) = CharVal char
-          evalConst (C.CBool bool) = BoolVal bool
+eval (LambdaExpr (Lambda param body)) = Result.succeed . FunctionVal . Function param body
+eval (AppExpr (App func arg)) = runReaderT $ ReaderT (eval func) >>= handleFuncVal
+    where handleFuncVal (FunctionVal closure) = ReaderT $ eval (body closure) . extendEnv closure
+          handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
 
-force :: Thunk -> Out
-force (Evaluated value) = Result.succeed value
-force (Delayed expr env) = eval expr env
+          argThunk = Delayed arg
+          extendEnv (Function param _ env) oldEnv = Env.extend param (ThunkVal $ argThunk oldEnv) env
+eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
+    where eval' (C.CInt int) = IntVal int
+          eval' (C.CFloat float) = FloatVal float
+          eval' (C.CDouble double) = DoubleVal double
+          eval' (C.CChar char) = CharVal char
+          eval' (C.CBool bool) = BoolVal bool
+
+force :: Value -> Out
+force (ThunkVal (Evaluated value)) = Result.succeed value
+force (ThunkVal (Delayed expr env)) = eval expr env
+force val = Result.succeed val
 

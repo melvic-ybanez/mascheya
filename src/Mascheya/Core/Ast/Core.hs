@@ -6,7 +6,7 @@ import Mascheya.Core.Display (Display(display))
 import Mascheya.Core.Token
 
 data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
-    | AppExpr App | BuiltinFuncExpr BuiltinFunc
+    | AppExpr App | BuiltinFuncExpr BuiltinFunc Int
     deriving Show
 
 newtype Var = Var Token deriving (Show, Eq)
@@ -28,8 +28,8 @@ mkVar = VarExpr . Var
 mkInt :: Int -> Expr
 mkInt = ConstExpr . CInt
 
-mkArith :: Arith -> Expr
-mkArith = BuiltinFuncExpr . ArithFunc
+mkArith :: Arith -> Int -> Expr
+mkArith arith = BuiltinFuncExpr  $ ArithFunc arith
 
 mkLambda :: Var -> Expr -> Expr
 mkLambda param' = LambdaExpr . Lambda param'
@@ -48,7 +48,7 @@ instance Display Expr where
               display' (CDouble double) = display double
               display' (CBool bool) = display bool
     display (AppExpr (App func arg')) = display func ++ " " ++ display arg'
-    display (BuiltinFuncExpr builtin) = display' builtin
+    display (BuiltinFuncExpr builtin _) = display' builtin
         where display' (ArithFunc Plus) = Lexemes.plus
               display' (ArithFunc Minus) = Lexemes.minus
               display' (ArithFunc Times) = Lexemes.times

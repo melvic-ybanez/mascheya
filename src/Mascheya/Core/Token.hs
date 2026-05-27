@@ -7,7 +7,7 @@ data Token = Token {
     line :: Int
 } deriving (Show, Eq)
 
-data TokenType = Literal Literal | Eof deriving (Eq, Show)
+data TokenType = Identifier | Literal Literal | Eof deriving (Eq, Show)
 
 data Literal = Int Int | Str String deriving (Eq, Show)
 
@@ -16,3 +16,6 @@ fromLine = Token Eof ""
 
 instance Display Token where
     display = lexeme
+
+mkIdentifier :: String -> Int -> Token
+mkIdentifier lexeme' line' = Token { tokenType = Identifier, lexeme = lexeme', line = line'}
