@@ -16,6 +16,7 @@ eval (AppExpr (App func arg)) = \env -> eval func env
     >>= \funcVal -> eval (body funcVal) (extendedEnv funcVal env)
     where handleFuncVal (ClosureVal closure) = Result.succeed closure
           handleFuncVal _ = Result.fail $ RuntimeError $ notAFunction func
+          
           argThunk = Delayed arg
           extendedEnv (Closure param _ env) oldEnv = Env.extend param (argThunk oldEnv) env
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ evalConst const'

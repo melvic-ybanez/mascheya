@@ -26,3 +26,12 @@ or = "||"
 
 ifLexeme :: String
 ifLexeme = "if"
+
+openSquareBracket :: String
+openSquareBracket = "["
+
+closeSquareBracket :: String
+closeSquareBracket = "]"
+
+cons :: String
+cons = "::"

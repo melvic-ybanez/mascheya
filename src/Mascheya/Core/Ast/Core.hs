@@ -19,7 +19,7 @@ data BuiltinFunc = ArithFunc Arith | LogicalFunc Logical | IfFunc If | ListFunc 
 
 data Arith = Plus | Minus | Times | Divide deriving Show
 data Logical = And | Or deriving Show
-data CList = Cons Expr Expr | Head Expr | Tail Expr | Nil deriving Show
+data CList = Cons Expr Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
 
 mkVar :: Token -> Expr
@@ -57,6 +57,8 @@ instance Display Expr where
               display' (LogicalFunc Or) = Lexemes.or
               display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme ++ " " ++ display cond 
                 ++ " " ++ display ifTrue ++ " " ++ display ifFalse
+              display' (ListFunc Nil) = Lexemes.openSquareBracket ++ Lexemes.closeSquareBracket
+              display' (ListFunc (Cons head' tail')) = display head' ++ " " ++ Lexemes.cons ++ " " ++ display tail'
               
 instance Display Var where
     display (Var token) = display token
