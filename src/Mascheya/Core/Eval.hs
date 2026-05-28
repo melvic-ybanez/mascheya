@@ -20,9 +20,9 @@ eval (AppExpr (App func arg')) = runReaderT $ ReaderT (eval func) >>= handleFunc
                   extendEnv oldEnv = Env.extend param' (ThunkVal $ argThunk oldEnv) env
           handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
 eval (BuiltinFuncExpr builtin _) = eval' builtin
-    where eval' (ArithFunc Plus a b) = evalArith a b $ \a -> \b -> a + b
-          eval' (ArithFunc Minus a b) = evalArith a b $ \a -> \b -> a - b
-          eval' (ArithFunc Times a b) = evalArith a b $ \a -> \b -> a * b
+    where eval' (ArithFunc Plus a b) = evalArith a b (+)
+          eval' (ArithFunc Minus a b) = evalArith a b (-)
+          eval' (ArithFunc Times a b) = evalArith a b (*)
 
           -- we are not using `evalArith` for division due to the edge case for ints
           eval' (ArithFunc Divide (CInt a) (CInt b)) = eval $ mkInt $ a `div` b
