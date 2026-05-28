@@ -1,6 +1,6 @@
 module Mascheya.Core.Eval.Value where
 import Mascheya.Core.Result (Result)
-import Mascheya.Core.Ast.Core (Expr, Var)
+import Mascheya.Core.Ast.Core (Expr)
 import Mascheya.Core.Eval.Env (Env)
 import Mascheya.Core.Display (Display(display))
 
@@ -8,7 +8,7 @@ data Value = ThunkVal Thunk | FunctionVal Function | ConstVal Const
 
 data Thunk = Thunk Out
 
-data Function = Function { param :: Var, body :: Expr, closureEnv :: Env Value }
+data Function = Function { param :: String, body :: Expr, closureEnv :: Env Value }
 
 data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | BoolVal Bool
 

@@ -6,4 +6,4 @@ import Mascheya.Core.Result (Result, succeed)
 
 translateExpr :: S.Expr -> Result C.Expr
 translateExpr (S.Literal (S.SInt value)) = 
-    succeed $ C.ConstExpr $ C.CInt $ fromIntegral value
+    succeed $ C.ConstExpr $ C.NumConst $ C.CInt $ fromIntegral value
