@@ -1,14 +1,13 @@
+{-# LANGUAGE RankNTypes #-}
 module Mascheya.Core.Eval where
 
 import Mascheya.Core.Eval.Value 
-import qualified Mascheya.Core.Ast.Core as C
 import Mascheya.Core.Ast.Core hiding (body)
 import Mascheya.Core.Eval.Env (Env)
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result (notAFunction, Failure (RuntimeError))
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
-import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Token (Token(lexeme))
 
 eval :: Expr -> Env Value -> Out
@@ -21,18 +20,11 @@ eval (AppExpr (App func arg')) = runReaderT $ ReaderT (eval func) >>= handleFunc
                   extendEnv oldEnv = Env.extend param' (ThunkVal $ argThunk oldEnv) env
           handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
 eval (BuiltinFuncExpr builtin _) = eval' builtin
-    where eval' (ArithFunc Plus (CInt a) (CInt b)) = eval $ mkInt $ a + b
-          eval' (ArithFunc Plus (CFloat a) (CFloat b)) = eval $ mkFloat $ a + b
-          eval' (ArithFunc Plus (CDouble a) (CDouble b)) = eval $ mkDouble $ a + b
+    where eval' (ArithFunc Plus a b) = evalArith a b $ \a -> \b -> a + b
+          eval' (ArithFunc Minus a b) = evalArith a b $ \a -> \b -> a - b
+          eval' (ArithFunc Times a b) = evalArith a b $ \a -> \b -> a * b
 
-          eval' (ArithFunc Minus (CInt a) (CInt b)) = eval $ mkInt $ a - b
-          eval' (ArithFunc Minus (CFloat a) (CFloat b)) = eval $ mkFloat $ a - b
-          eval' (ArithFunc Minus (CDouble a) (CDouble b)) = eval $ mkDouble $ a - b
-
-          eval' (ArithFunc Times (CInt a) (CInt b)) = eval $ mkInt $ a * b
-          eval' (ArithFunc Times (CFloat a) (CFloat b)) = eval $ mkFloat $ a * b
-          eval' (ArithFunc Times (CDouble a) (CDouble b)) = eval $ mkDouble $ a * b
-
+          -- we are not using `evalArith` for division due to the edge case for ints
           eval' (ArithFunc Divide (CInt a) (CInt b)) = eval $ mkInt $ a `div` b
           eval' (ArithFunc Divide (CFloat a) (CFloat b)) = eval $ mkFloat $ a / b
           eval' (ArithFunc Divide (CDouble a) (CDouble b)) = eval $ mkDouble $ a / b
@@ -42,6 +34,11 @@ eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
           eval' (NumConst (CDouble double)) = DoubleVal double
           eval' (CChar char) = CharVal char
           eval' (CBool bool) = BoolVal bool
+
+evalArith :: Numeric -> Numeric -> (forall a. Num a => (a -> a -> a)) -> Env Value -> Out
+evalArith (CInt a) (CInt b) f = eval $ mkInt $ f a b
+evalArith (CFloat a) (CFloat b) f = eval $ mkFloat $ f a b
+evalArith (CDouble a) (CDouble b) f = eval $ mkDouble $ f a b
 
 force :: Value -> Out
 force (ThunkVal (Thunk value')) = value'
