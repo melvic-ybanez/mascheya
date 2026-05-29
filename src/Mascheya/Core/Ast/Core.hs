@@ -3,6 +3,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Mascheya.Core.Ast.Core where
+    
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Display (Display(display))
 import Mascheya.Core.Token
@@ -83,8 +84,11 @@ instance Display Expr where
               display' (ArithFunc (AnyArith Divide _ _)) = Lexemes.divide
               display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme ++ " " ++ display cond 
                 ++ " " ++ display ifTrue ++ " " ++ display ifFalse
-              display' (ListFunc Nil) = Lexemes.openSquareBracket ++ Lexemes.closeSquareBracket
-              display' (ListFunc (Cons head' tail')) = display head' ++ " " ++ Lexemes.cons ++ " " ++ display tail'
+              display' (ListFunc clist) = display clist
               
 instance Display Var where
     display (Var token) = display token
+
+instance Display CList where
+    display Nil = Lexemes.openSquareBracket ++ Lexemes.closeSquareBracket
+    display (Cons h t) = display h ++ " " ++ Lexemes.cons ++ " " ++ display t

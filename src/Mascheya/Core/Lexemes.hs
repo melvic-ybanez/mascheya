@@ -44,3 +44,6 @@ float = "Float"
 
 double :: String
 double = "Double"
+
+colon :: String
+colon = ":"

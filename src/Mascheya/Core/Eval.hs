@@ -13,11 +13,12 @@ import Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
 import Mascheya.Core.Token (Token(lexeme))
 
 eval :: Expr -> Env Value -> Out
-eval (VarExpr (Var token)) = (>>= force) . (maybe error' Right . Env.lookup (lexeme token))
+eval (VarExpr (Var token)) = (>>= force) . maybe error' Right . Env.lookup (lexeme token)
     where error' = Result.fail $ RuntimeError $ Result.undefinedVar token
 eval (LambdaExpr (Lambda (Var token) body')) = Result.succeed . FunctionVal . Function (lexeme token) body'
 eval (AppExpr (App func arg')) = runReaderT $ ReaderT (eval func) >>= handleFuncVal
-    where handleFuncVal (FunctionVal closure@(Function param' _ env)) = ReaderT $ eval (body closure) . extendEnv
+    where handleFuncVal (FunctionVal closure@(Function param' _ env)) = 
+            ReaderT $ eval (body closure) . extendEnv
             where argThunk = Thunk . eval arg'
                   extendEnv oldEnv = Env.extend param' (ThunkVal $ argThunk oldEnv) env
           handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
@@ -32,7 +33,9 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
                   eval'' (AnyArith Divide (CFloat a) (CFloat b)) = eval $ mkFloat $ a / b
                   eval'' (AnyArith Divide (CDouble a) (CDouble b)) = eval $ mkDouble $ a / b        
           eval' (IfFunc (If True expr _)) = eval expr
-          eval' (IfFunc (If False _ expr)) = eval expr 
+          eval' (IfFunc (If False _ expr)) = eval expr
+          eval' (ListFunc Nil) = const $ Result.succeed $ ListVal NilVal
+          eval' (ListFunc (Cons h t)) = Result.succeed . ListVal . ConsVal h t
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
     where eval' (NumConst (AnyNum (CInt int))) = IntVal int
           eval' (NumConst (AnyNum (CFloat float))) = FloatVal float
