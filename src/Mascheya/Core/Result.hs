@@ -34,6 +34,8 @@ data ExpectedDetails = ExpectedDetails {
 
 data RuntimeError = UndefinedVariable Token String | NotAFunction Expr String deriving Show
 
+data TypeError = ExpectedType String String deriving Show
+
 instance Display Failure where
     display (LexerError error) = "Lexer Error: " ++ display error 
     display (ParseError error) = "Parse Error: " ++ display error
@@ -50,11 +52,10 @@ instance Display ParseError where
         displayLineAndMessage line "Invalid assignment target"
 
 instance Display RuntimeError where
-    display = ("Runtime Error: " ++ ) . display' 
-        where display' (UndefinedVariable token message) = 
-                message ++ "\n" ++ displayLine (line token) ++ ". " ++ display token 
-              display' (NotAFunction expr message) = 
-                message ++ "\n" ++ display expr ++ ". " 
+    display (UndefinedVariable token message) = 
+        message ++ "\n" ++ displayLine (line token) ++ ". " ++ display token 
+    display (NotAFunction expr message) = 
+        message ++ "\n" ++ display expr ++ ". " 
 
 expectedError :: Token -> String -> String -> ParseError
 expectedError start expected at = Expected $ case (tokenType start) of

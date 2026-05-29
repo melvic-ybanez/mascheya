@@ -35,3 +35,12 @@ closeSquareBracket = "]"
 
 cons :: String
 cons = "::"
+
+int :: String
+int = "Int"
+
+float :: String
+float = "Float"
+
+double :: String
+double = "Double"
