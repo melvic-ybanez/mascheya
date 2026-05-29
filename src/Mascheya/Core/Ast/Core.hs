@@ -13,7 +13,7 @@ data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const
 
 newtype Var = Var Token deriving (Show, Eq)
 
-data Const = NumConst AnyNum | CChar Char | CBool Bool deriving Show
+data Const = NumConst AnyNum | CharConst CChar deriving Show
 
 data CIntTag 
 data CFloatTag
@@ -26,13 +26,15 @@ data Numeric t where
 
 data AnyNum = forall t. AnyNum (Numeric t)
 
+data CChar = CChar Char deriving Show
+
 deriving instance Show AnyNum
 deriving instance Show (Numeric t)
 
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
 
-data BuiltinFunc = ArithFunc AnyArith| LogicalFunc Logical | IfFunc If | ListFunc CList
+data BuiltinFunc = ArithFunc AnyArith | IfFunc If | ListFunc CList
     deriving Show
 
 data AnyArith = forall a. AnyArith ArithKind (Numeric a) (Numeric a)
@@ -40,7 +42,6 @@ data AnyArith = forall a. AnyArith ArithKind (Numeric a) (Numeric a)
 deriving instance Show AnyArith
 
 data ArithKind = Plus | Minus | Times | Divide deriving Show
-data Logical = And | Or deriving Show
 data CList = Cons Expr Expr | Nil deriving Show
 data If = If Bool Expr Expr deriving Show
 
@@ -73,16 +74,13 @@ instance Display Expr where
         where display' (NumConst (AnyNum (CInt int))) = display int
               display' (NumConst (AnyNum (CFloat float))) = display float
               display' (NumConst (AnyNum (CDouble double))) = display double
-              display' (CChar char') = display char'
-              display' (CBool bool) = display bool
+              display' (CharConst (CChar char')) = display char'
     display (AppExpr (App func arg')) = display func ++ " " ++ display arg'
     display (BuiltinFuncExpr builtin _) = display' builtin
         where display' (ArithFunc (AnyArith Plus _ _)) = Lexemes.plus
               display' (ArithFunc (AnyArith Minus _ _)) = Lexemes.minus
               display' (ArithFunc (AnyArith Times _ _)) = Lexemes.times
               display' (ArithFunc (AnyArith Divide _ _)) = Lexemes.divide
-              display' (LogicalFunc And) = Lexemes.and
-              display' (LogicalFunc Or) = Lexemes.or
               display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme ++ " " ++ display cond 
                 ++ " " ++ display ifTrue ++ " " ++ display ifFalse
               display' (ListFunc Nil) = Lexemes.openSquareBracket ++ Lexemes.closeSquareBracket

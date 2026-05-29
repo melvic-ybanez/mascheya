@@ -31,12 +31,14 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
                   eval'' (AnyArith Divide (CInt a) (CInt b)) = eval $ mkInt $ a `div` b
                   eval'' (AnyArith Divide (CFloat a) (CFloat b)) = eval $ mkFloat $ a / b
                   eval'' (AnyArith Divide (CDouble a) (CDouble b)) = eval $ mkDouble $ a / b        
+          eval' (IfFunc (If True expr _)) = eval expr
+          eval' (IfFunc (If False _ expr)) = eval expr 
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
     where eval' (NumConst (AnyNum (CInt int))) = IntVal int
           eval' (NumConst (AnyNum (CFloat float))) = FloatVal float
           eval' (NumConst (AnyNum (CDouble double))) = DoubleVal double
-          eval' (CChar char) = CharVal char
-          eval' (CBool bool) = BoolVal bool
+          eval' (CharConst (CChar char)) = CharVal char
+    
 
 evalArith :: Numeric c -> Numeric c -> (forall a. Num a => (a -> a -> a)) -> Env Value -> Out
 evalArith (CInt a) (CInt b) f = eval $ mkInt $ f a b
