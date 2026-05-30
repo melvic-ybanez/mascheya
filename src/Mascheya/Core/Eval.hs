@@ -38,8 +38,10 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
                         ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ mkFloat $ g f1 f2
                         ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ mkDouble $ g d1 d2
                         (_, _) -> const $ Result.fail $ InternalError $ TypecheckingFailed
-          eval' (IfFunc (If True expr _)) = eval expr
-          eval' (IfFunc (If False _ expr)) = eval expr
+          eval' (IfFunc (If cond ifTrue ifFalse)) = runReaderT $ ReaderT (eval cond) >>= ReaderT . handle
+            where handle (ConstVal (BoolVal True)) = eval ifTrue
+                  handle (ConstVal (BoolVal False)) = eval ifFalse
+                  handle _ = const $ Result.fail $ InternalError $ TypecheckingFailed
           eval' (ListFunc Nil) = const $ Result.succeed $ ListVal NilVal
           eval' (ListFunc (Cons h t)) = Result.succeed . ListVal . ConsVal h t
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'

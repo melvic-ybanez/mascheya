@@ -26,7 +26,7 @@ data Arith = Arith ArithKind Expr Expr deriving Show
 
 data ArithKind = Plus | Minus | Times | Divide deriving Show
 data CList = Cons Expr Expr | Nil deriving Show
-data If = If Bool Expr Expr deriving Show
+data If = If Expr Expr Expr deriving Show
 
 mkVar :: Token -> Expr
 mkVar = VarExpr . Var
