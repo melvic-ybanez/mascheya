@@ -1,5 +1,4 @@
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
 
 module Mascheya.Core.Eval where
 
@@ -8,7 +7,7 @@ import Mascheya.Core.Ast.Core hiding (body)
 import Mascheya.Core.Eval.Env (Env)
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
-import Mascheya.Core.Result (notAFunction, Failure (RuntimeError))
+import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT))
 import Mascheya.Core.Token (Token(lexeme))
 
@@ -24,29 +23,30 @@ eval (AppExpr (App func arg')) = runReaderT $ ReaderT (eval func) >>= handleFunc
           handleFuncVal _ = ReaderT $ const $ Result.fail $ RuntimeError $ notAFunction func
 eval (BuiltinFuncExpr builtin _) = eval' builtin
     where eval' (ArithFunc anyArith) = eval'' anyArith
-            where eval'' (AnyArith Plus a b) = evalArith a b (+)
-                  eval'' (AnyArith Minus a b) = evalArith a b (-)
-                  eval'' (AnyArith Times a b) = evalArith a b (*)
+            where eval'' (Arith Plus a b) = evalArith a b (+) (+)
+                  eval'' (Arith Minus a b) = evalArith a b (-) (-)
+                  eval'' (Arith Times a b) = evalArith a b (*) (*)
+                  eval'' (Arith Divide a b) = evalArith a b div (/)
 
-                  -- we are not using `evalArith` for division due to the edge case for ints
-                  eval'' (AnyArith Divide (CInt a) (CInt b)) = eval $ mkInt $ a `div` b
-                  eval'' (AnyArith Divide (CFloat a) (CFloat b)) = eval $ mkFloat $ a / b
-                  eval'' (AnyArith Divide (CDouble a) (CDouble b)) = eval $ mkDouble $ a / b        
+                  evalArith :: Expr -> Expr -> (Int -> Int -> Int) -> 
+                    (forall a. Fractional a => a -> a -> a) -> Env Value -> Out
+                  evalArith a b f g = runReaderT $ do
+                    aVal <- ReaderT $ eval a
+                    bVal <- ReaderT $ eval b
+                    ReaderT $ case (aVal, bVal) of
+                        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ mkInt $ f i1 i2
+                        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ mkFloat $ g f1 f2
+                        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ mkDouble $ g d1 d2
+                        (_, _) -> const $ Result.fail $ InternalError $ TypecheckingFailed
           eval' (IfFunc (If True expr _)) = eval expr
           eval' (IfFunc (If False _ expr)) = eval expr
           eval' (ListFunc Nil) = const $ Result.succeed $ ListVal NilVal
           eval' (ListFunc (Cons h t)) = Result.succeed . ListVal . ConsVal h t
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
-    where eval' (NumConst (AnyNum (CInt int))) = IntVal int
-          eval' (NumConst (AnyNum (CFloat float))) = FloatVal float
-          eval' (NumConst (AnyNum (CDouble double))) = DoubleVal double
+    where eval' (NumConst (CInt int)) = IntVal int
+          eval' (NumConst (CFloat float)) = FloatVal float
+          eval' (NumConst (CDouble double)) = DoubleVal double
           eval' (CharConst (CChar char)) = CharVal char
-    
-
-evalArith :: Numeric c -> Numeric c -> (forall a. Num a => (a -> a -> a)) -> Env Value -> Out
-evalArith (CInt a) (CInt b) f = eval $ mkInt $ f a b
-evalArith (CFloat a) (CFloat b) f = eval $ mkFloat $ f a b
-evalArith (CDouble a) (CDouble b) f = eval $ mkDouble $ f a b
 
 force :: Value -> Out
 force (ThunkVal (Thunk value')) = value'

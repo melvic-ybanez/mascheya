@@ -5,7 +5,7 @@ import Mascheya.Core.Ast.Core (Expr)
 import Mascheya.Core.Eval.Env (Env)
 import Mascheya.Core.Display (Display(display))
 
-data Value = ThunkVal Thunk | FunctionVal Function | ConstVal Const | ListVal List
+data Value = ThunkVal Thunk | FunctionVal Function | ConstVal Const | ListVal List | Bottom
 
 data Thunk = Thunk Out
 
@@ -25,6 +25,7 @@ instance Display Value where
     {- TODO: This definition is probably just temporary, because we might have
         to eval the args before printing the list -}
     display (ListVal _) = "<list>" 
+    display Bottom = "_|_"
 
 instance Display Const where
     display (IntVal int) = display int
