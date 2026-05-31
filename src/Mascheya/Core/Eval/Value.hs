@@ -7,13 +7,13 @@ import Mascheya.Core.Display (Display(display))
 
 data Value = ThunkVal Thunk | FunctionVal Function | ConstVal Const | ListVal List | Bottom
 
-data Thunk = Thunk Out
+newtype Thunk = Thunk Out
 
 data Function = Function { param :: String, body :: Expr, closureEnv :: Env Value }
 
 data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | BoolVal Bool 
 
-data List = ConsVal Expr Expr (Env Value) | NilVal
+data List = ConsVal Thunk Thunk | NilVal
 
 type Out = Result Value
 

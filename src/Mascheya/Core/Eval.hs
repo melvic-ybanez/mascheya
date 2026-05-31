@@ -46,7 +46,8 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
                   handle Bottom = returnBottom
                   handle _ = const $ Result.fail $ InternalError $ TypecheckingFailed
           eval' (ListFunc Nil) = const $ Result.succeed $ ListVal NilVal
-          eval' (ListFunc (Cons h t)) = Result.succeed . ListVal . ConsVal h t
+          eval' (ListFunc (Cons h t)) = \env -> Result.succeed $ ListVal 
+            $ ConsVal (Thunk $ eval h env) (Thunk $ eval t env)
 eval (ConstExpr const') = const $ Result.succeed $ ConstVal $ eval' const'
     where eval' (NumConst (CInt int)) = IntVal int
           eval' (NumConst (CFloat float)) = FloatVal float
