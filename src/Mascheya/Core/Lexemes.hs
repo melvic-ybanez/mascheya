@@ -47,3 +47,6 @@ double = "Double"
 
 colon :: String
 colon = ":"
+
+comma :: String
+comma = ","

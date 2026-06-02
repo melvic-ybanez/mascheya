@@ -7,8 +7,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Prelude hiding (map)
 
 data ParseResult a = ParseResult {
-    result :: Result a,
-    parser :: Parser
+  result :: Result a,
+  parser :: Parser
 }
 
 succeed :: a -> Parser -> ParseResult a
@@ -31,5 +31,5 @@ mapValue f parseResult = map (\step -> Step (f (value step)) (parser parseResult
 
 fold :: (NonEmpty Result.Failure -> Parser -> b) -> (Step a -> b) -> ParseResult a -> b 
 fold ifError ifSuccess parseResult = handle (result parseResult) (parser parseResult)
-    where handle (Left errors) = ifError errors
-          handle (Right value) = ifSuccess . (Step value)
+  where handle (Left errors) = ifError errors
+        handle (Right value) = ifSuccess . (Step value)
