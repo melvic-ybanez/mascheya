@@ -19,18 +19,20 @@ parse parser = mapValue (\expr -> [expr]) $ parseExpr parser
 
 parseExpr :: Parser -> ParseResult Expr
 parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
-  where handle Nothing = ParseResult.fail error parser
-        handle (Just result) = mapValue (\r -> S.Literal r) result
+  where 
+    handle Nothing = ParseResult.fail error parser
+    handle (Just result) = mapValue (\r -> S.Literal r) result
 
-        error = Result.ParseError $ expectedError (peek parser) "expression" "at start"
+    error = Result.ParseError $ expectedError (peek parser) "expression" "at start"
 
 parseLiteral :: Parser -> Maybe (Step S.Literal)
 parseLiteral = fmap next . matchAnyWith pred
-  where pred (T.Literal _) = True
-        pred _ = False
+  where 
+    pred (T.Literal _) = True
+    pred _ = False
 
-        next result = Step (makeLiteral $ tokenType $ previousToken result) result
-          where makeLiteral (T.Literal (T.Int value)) = S.SInt value
+    next result = Step (makeLiteral $ tokenType $ previousToken result) result
+      where makeLiteral (T.Literal (T.Int value)) = S.SInt value
 
 matchAny :: [TokenType] -> Parser -> Maybe Parser
 matchAny tokenTypes = matchAnyWith (\tokenType -> elem tokenType tokenTypes)

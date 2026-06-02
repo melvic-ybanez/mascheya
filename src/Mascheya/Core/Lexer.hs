@@ -30,14 +30,15 @@ lexeme Lexer { start, current, source } = take (current - start) $ drop start so
 
 fromSource :: String -> Result Lexer
 fromSource source = fmap add1Line $ loop initLexer
-  where initLexer = Lexer source 0 0 1 []
+  where 
+    initLexer = Lexer source 0 0 1 []
 
-        loop lexer | isAtEnd lexer = succeed lexer
-        loop lexer = handle $ scanNext lexer
-          where handle error@(Left _) = error
-                handle (Right lexer) = loop lexer
-  
-        add1Line lexer = updateTokens (\tokens -> (fromLine $ line lexer) : tokens) lexer 
+    loop lexer | isAtEnd lexer = succeed lexer
+    loop lexer = handle $ scanNext lexer
+      where handle error@(Left _) = error
+            handle (Right lexer) = loop lexer
+
+    add1Line lexer = updateTokens (\tokens -> (fromLine $ line lexer) : tokens) lexer 
 
 tokens :: Lexer -> [Token]
 tokens = reverse . tokenStack
@@ -64,9 +65,10 @@ advance lexer = lexer { current = current lexer + 1 }
 
 scanInt :: Endo Lexer
 scanInt lexer = addToken (newToken wholeNumber) wholeNumber
-  where scanWholeNumber = advanceWhile $ isDigit . peek
-        newToken = Token.Literal . Token.Int . read . lexeme
-        wholeNumber = scanWholeNumber lexer
+  where 
+    scanWholeNumber = advanceWhile $ isDigit . peek
+    newToken = Token.Literal . Token.Int . read . lexeme
+    wholeNumber = scanWholeNumber lexer
 
 advanceWhile :: (Lexer -> Bool) -> Endo Lexer
 advanceWhile pred lexer | not $ pred lexer = lexer
