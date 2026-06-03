@@ -50,3 +50,6 @@ colon = ":"
 
 comma :: String
 comma = ","
+
+dot :: Char
+dot = '.'

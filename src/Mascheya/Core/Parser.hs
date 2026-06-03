@@ -28,15 +28,15 @@ parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
 parseLiteral :: Parser -> Maybe (Step S.Literal)
 parseLiteral = fmap next' . matchAnyWith pred'
   where 
-    pred' (T.Literal _) = True
+    pred' (T.LiteralType _) = True
     pred' _ = False
 
     next' result = Step (mkLit $ tokenType $ previousToken result) result
       where 
-        mkLit (T.Literal (T.TInt i)) = S.SInt i
-        mkLit (T.Literal (T.TFloat f)) = S.SFloat f
-        mkLit (T.Literal (T.TDouble d)) = S.SDouble d
-        mkLit (T.Literal (T.TChar c)) = S.SChar c
+        mkLit (T.LiteralType (T.TInt i)) = S.SInt i
+        mkLit (T.LiteralType (T.TFloat f)) = S.SFloat f
+        mkLit (T.LiteralType (T.TDouble d)) = S.SDouble d
+        mkLit (T.LiteralType (T.TChar c)) = S.SChar c
 
 matchAny :: [TokenType] -> Parser -> Maybe Parser
 matchAny tokenTypes = matchAnyWith (\tokenType' -> elem tokenType' tokenTypes)
