@@ -53,3 +53,6 @@ comma = ","
 
 dot :: Char
 dot = '.'
+
+floatSuffix :: Char
+floatSuffix = 'f'

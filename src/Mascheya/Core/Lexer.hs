@@ -15,7 +15,6 @@ import Data.Char(chr)
 import qualified Mascheya.Core.Token as Token
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Lexemes as Lexemes
-import qualified Mascheya.Core.Token as Token
 
 data Lexer = Lexer {
   source :: String,
@@ -66,15 +65,22 @@ advance :: Endo Lexer
 advance lexer = lexer { current = current lexer + 1 }
 
 scanNumber :: Endo Lexer
-scanNumber lexer = addToken (newTokenF fractional) fractional
+scanNumber lexer = addToken (newTokenF number) number
   where
     newIntToken = newToken $ Token.TInt . read 
     newFloatToken = newToken $ Token.TFloat . read  
+    newDoubleToken = newToken $ Token.TDouble . read
     newToken f = Token.LiteralType . f . lexeme
     
     wholeNumber = scanWholeNumber lexer
-    (fractional, newTokenF) = if (peek wholeNumber) == Lexemes.dot && (isDigit $ peekNext wholeNumber)
-      then (scanWholeNumber . advance $ wholeNumber, newFloatToken) else (wholeNumber, newIntToken)
+    (number, newTokenF) = 
+      if peek wholeNumber == Lexemes.dot && (isDigit $ peekNext wholeNumber)
+      then 
+        let fractional = scanWholeNumber . advance $ wholeNumber
+            newFracToken = if peek fractional == Lexemes.floatSuffix 
+              then newFloatToken else newDoubleToken
+        in (fractional, newFracToken)
+      else (wholeNumber, newIntToken)
 
 scanWholeNumber :: Endo Lexer
 scanWholeNumber = advanceWhile $ isDigit . peek
