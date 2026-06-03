@@ -32,4 +32,4 @@ mapValue f parseResult = map (\step -> Step (f (value step)) (parser parseResult
 fold :: (NonEmpty Result.Failure -> Parser -> b) -> (Step a -> b) -> ParseResult a -> b 
 fold ifError ifSuccess parseResult = handle (result parseResult) (parser parseResult)
   where handle (Left errors) = ifError errors
-        handle (Right value) = ifSuccess . (Step value)
+        handle (Right val) = ifSuccess . (Step val)

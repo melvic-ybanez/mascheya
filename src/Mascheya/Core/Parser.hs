@@ -20,33 +20,37 @@ parse parser = mapValue (\expr -> [expr]) $ parseExpr parser
 parseExpr :: Parser -> ParseResult Expr
 parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
   where 
-    handle Nothing = ParseResult.fail error parser
+    handle Nothing = ParseResult.fail error' parser
     handle (Just result) = mapValue (\r -> S.Literal r) result
 
-    error = Result.ParseError $ expectedError (peek parser) "expression" "at start"
+    error' = Result.ParseError $ expectedError (peek parser) "expression" "at start"
 
 parseLiteral :: Parser -> Maybe (Step S.Literal)
-parseLiteral = fmap next . matchAnyWith pred
+parseLiteral = fmap next' . matchAnyWith pred'
   where 
-    pred (T.Literal _) = True
-    pred _ = False
+    pred' (T.Literal _) = True
+    pred' _ = False
 
-    next result = Step (makeLiteral $ tokenType $ previousToken result) result
-      where makeLiteral (T.Literal (T.Int value)) = S.SInt value
+    next' result = Step (mkLit $ tokenType $ previousToken result) result
+      where 
+        mkLit (T.Literal (T.TInt i)) = S.SInt i
+        mkLit (T.Literal (T.TFloat f)) = S.SFloat f
+        mkLit (T.Literal (T.TDouble d)) = S.SDouble d
+        mkLit (T.Literal (T.TChar c)) = S.SChar c
 
 matchAny :: [TokenType] -> Parser -> Maybe Parser
-matchAny tokenTypes = matchAnyWith (\tokenType -> elem tokenType tokenTypes)
+matchAny tokenTypes = matchAnyWith (\tokenType' -> elem tokenType' tokenTypes)
 
 matchAnyWith :: (TokenType -> Bool) -> Parser -> Maybe Parser
-matchAnyWith pred parser = processResult $ checkWith pred parser
+matchAnyWith pred' parser = processResult $ checkWith pred' parser
   where processResult True = Just $ next $ advance parser
         processResult False = Nothing
 
 checkWith :: (TokenType -> Bool) -> Parser -> Bool 
-checkWith pred parser = if isAtEnd parser then False else pred $ tokenType $ peek parser
+checkWith pred' parser = if isAtEnd parser then False else pred' $ tokenType $ peek parser
 
 check :: TokenType -> Parser -> Bool
-check tokenType = checkWith $ \tt -> tt == tokenType
+check tokenType' = checkWith $ \tt -> tt == tokenType'
 
 isAtEnd :: Parser -> Bool
 isAtEnd parser = tokenType (peek parser) == Eof

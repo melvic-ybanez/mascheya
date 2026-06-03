@@ -80,8 +80,8 @@ reify (FunctionVal (Function p b _)) = return $ PureFuncVal $ PureFunction p b
 reify (ConstVal c) = return $ PureConstVal c
 reify (ListVal NilVal) = return $ PureListVal PureNilVal 
 reify (ListVal (ConsVal h t)) = do
-  pureH <- reify (ThunkVal h)
-  pureT <- reify (ThunkVal t)
+  pureH <- reify $ ThunkVal h
+  pureT <- reify $ ThunkVal t
   case pureT of
     (PureListVal pureList) -> return $ PureListVal $ PureConsVal pureH pureList
     _ -> Result.failT $ InternalError $ TypecheckingFailed 

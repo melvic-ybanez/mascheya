@@ -35,10 +35,10 @@ fromSource source = fmap add1Line $ loop initLexer
 
     loop lexer | isAtEnd lexer = succeed lexer
     loop lexer = handle $ scanNext lexer
-      where handle error@(Left _) = error
-            handle (Right lexer) = loop lexer
+      where handle error'@(Left _) = error'
+            handle (Right lexer') = loop lexer'
 
-    add1Line lexer = updateTokens (\tokens -> (fromLine $ line lexer) : tokens) lexer 
+    add1Line lexer = updateTokens (\tokens' -> (fromLine $ line lexer) : tokens') lexer 
 
 tokens :: Lexer -> [Token]
 tokens = reverse . tokenStack
@@ -67,11 +67,11 @@ scanInt :: Endo Lexer
 scanInt lexer = addToken (newToken wholeNumber) wholeNumber
   where 
     scanWholeNumber = advanceWhile $ isDigit . peek
-    newToken = Token.Literal . Token.Int . read . lexeme
+    newToken = Token.Literal . Token.TInt . read . lexeme
     wholeNumber = scanWholeNumber lexer
 
 advanceWhile :: (Lexer -> Bool) -> Endo Lexer
-advanceWhile pred lexer | not $ pred lexer = lexer
+advanceWhile pred' lexer | not $ pred' lexer = lexer
 advanceWhile _ lexer = advance lexer
 
 peek :: Lexer -> Char
@@ -94,5 +94,5 @@ updateTokens :: ([Token] -> [Token]) -> Endo Lexer
 updateTokens f lexer = lexer { tokenStack = f (tokenStack lexer) }
 
 addToken :: TokenType -> Endo Lexer
-addToken tokenType lexer = updateTokens addToken lexer
-  where addToken tokens = (Token tokenType (lexeme lexer) (line lexer)) : tokens
+addToken tokenType lexer = updateTokens add' lexer
+  where add' tokens' = (Token tokenType (lexeme lexer) (line lexer)) : tokens'

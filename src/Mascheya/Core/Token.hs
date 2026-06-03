@@ -9,7 +9,7 @@ data Token = Token {
 
 data TokenType = Identifier | Literal Literal | Eof deriving (Eq, Show)
 
-data Literal = Int Int | Str String deriving (Eq, Show)
+data Literal = TInt Int | TFloat Float | TDouble Double | TChar Char deriving (Eq, Show)
 
 fromLine :: Int -> Token
 fromLine = Token Eof ""
