@@ -51,26 +51,34 @@ newNumeric f = ConstExpr . NumConst . f
 
 instance Display Expr where
   display (VarExpr var) = display var
-  display (LambdaExpr (Lambda param' body')) = Lexemes.lambdaSymbol ++ display param' ++ " " 
-    ++ Lexemes.rightArrow ++ " " ++ display body'
+  display (LambdaExpr (Lambda param' body')) = display Lexemes.lambdaSymbol ++ display param' 
+    ++ display Lexemes.space ++ Lexemes.rightArrow 
+    ++ display Lexemes.space ++ display body'
   display (ConstExpr constExpr) = display' constExpr
-    where display' (NumConst (CInt int)) = display int
-          display' (NumConst (CFloat float)) = display float
-          display' (NumConst (CDouble double)) = display double
-          display' (CharConst (CChar char')) = display char'
+    where 
+      display' (NumConst num) = case num of
+        CInt int -> display int
+        CFloat float -> display float
+        CDouble double -> display double
+      display' (CharConst (CChar char')) = display char'
   display (AppExpr (App func arg')) = display func ++ " " ++ display arg'
   display (BuiltinFuncExpr builtin _) = display' builtin
-    where display' (ArithFunc (Arith Plus _ _)) = Lexemes.plus
-          display' (ArithFunc (Arith Minus _ _)) = Lexemes.minus
-          display' (ArithFunc (Arith Times _ _)) = Lexemes.times
-          display' (ArithFunc (Arith Divide _ _)) = Lexemes.divide
-          display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme ++ " " ++ display cond 
-            ++ " " ++ display ifTrue ++ " " ++ display ifFalse
-          display' (ListFunc clist) = display clist
+    where 
+      display' (ArithFunc (Arith op _ _)) = display $ case op of
+        Plus -> Lexemes.plus
+        Minus -> Lexemes.minus
+        Times -> Lexemes.times
+        Divide -> Lexemes.divide
+      display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme 
+        ++ display Lexemes.space ++ display cond 
+        ++ display Lexemes.space ++ display ifTrue 
+        ++ display Lexemes.space ++ display ifFalse
+      display' (ListFunc clist) = display clist
               
 instance Display Var where
   display (Var token) = display token
 
 instance Display CList where
-  display Nil = Lexemes.openSquareBracket ++ Lexemes.closeSquareBracket
-  display (Cons h t) = display h ++ " " ++ Lexemes.cons ++ " " ++ display t
+  display Nil = display Lexemes.openSquareBracket ++ display Lexemes.closeSquareBracket
+  display (Cons h t) = display h ++ display Lexemes.space 
+    ++ Lexemes.cons ++ display Lexemes.space ++ display t

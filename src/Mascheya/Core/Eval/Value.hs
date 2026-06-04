@@ -44,12 +44,14 @@ instance Display Const where
   display (BoolVal bool) = display bool
 
 instance Display PureList where
-  display list = Lexemes.openSquareBracket ++ displayItems list "" ++ Lexemes.closeSquareBracket
+  display list = display Lexemes.openSquareBracket 
+    ++ displayItems list "" ++ display Lexemes.closeSquareBracket
     where 
       displayItems PureNilVal accStr = accStr
       displayItems (PureConsVal h t) accStr = displayItems t $ accStr ++ separator ++ display h
         where
-          separator = if null accStr then "" else Lexemes.comma ++ " "
+          separator = if null accStr 
+            then "" else display Lexemes.comma ++ display Lexemes.space
     
 instance Display (Function s) where
   display (Function _ _ _) = "<closure>"

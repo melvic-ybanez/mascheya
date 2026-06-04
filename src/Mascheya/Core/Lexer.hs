@@ -55,9 +55,10 @@ scanNext = scan . prepareNext
 scan :: Scan
 scan lexer = scanWith $ case char of 
   c | isDigit c -> succeed . scanNumber
-    | c == Lexemes.leftParen -> Result.succeed . addToken Token.LeftParen 
-    | c == Lexemes.rightParen -> Result.succeed . addToken Token.RightParen
-    | c == Lexemes.equals -> addTokenOrElse c Token.Equals Token.DoubleEquals
+    | c == Lexemes.leftParen -> addTokenOk Token.LeftParen 
+    | c == Lexemes.rightParen -> addTokenOk Token.RightParen
+    | c == Lexemes.lambdaSymbol -> addTokenOk Token.LambdaSymbol
+    | c == Lexemes.equals -> addTokenOrElse c Token.Equals Token.DoubleEquals    
     | otherwise -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
   where 
     scanWith = ( $ advancedLexer)
@@ -113,6 +114,9 @@ isAtEnd lexer = current lexer >= (length $ source lexer)
 
 updateTokens :: Endo [Token] -> Endo Lexer
 updateTokens f lexer = lexer { tokenStack = f (tokenStack lexer) }
+
+addTokenOk :: TokenType -> Scan
+addTokenOk tokenType = Result.succeed . addToken tokenType
 
 addToken :: TokenType -> Endo Lexer
 addToken tokenType lexer = updateTokens add' lexer

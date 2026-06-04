@@ -1,37 +1,31 @@
 module Mascheya.Core.Lexemes where
 
-plus :: String
-plus = "+"
+plus :: Char
+plus = '+'
 
-minus :: String
-minus = "-"
+minus :: Char
+minus = '-'
 
-times :: String
-times = "*"
+times :: Char
+times = '*'
 
-divide :: String
-divide = "/"
+divide :: Char
+divide = '/'
 
 rightArrow :: String
 rightArrow = "->"
 
-lambdaSymbol :: String
-lambdaSymbol = "\\"
-
-and :: String
-and = "&&"
-
-or :: String
-or = "||"
+lambdaSymbol :: Char
+lambdaSymbol = '\\'
 
 ifLexeme :: String
 ifLexeme = "if"
 
-openSquareBracket :: String
-openSquareBracket = "["
+openSquareBracket :: Char
+openSquareBracket = '['
 
-closeSquareBracket :: String
-closeSquareBracket = "]"
+closeSquareBracket :: Char
+closeSquareBracket = ']'
 
 cons :: String
 cons = "::"
@@ -45,11 +39,11 @@ float = "Float"
 double :: String
 double = "Double"
 
-colon :: String
-colon = ":"
+colon :: Char
+colon = ':'
 
-comma :: String
-comma = ","
+comma :: Char
+comma = ','
 
 dot :: Char
 dot = '.'
@@ -65,3 +59,6 @@ leftParen = '('
 
 rightParen :: Char
 rightParen = ')'
+
+space :: Char
+space = ' '
