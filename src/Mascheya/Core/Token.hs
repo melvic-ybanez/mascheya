@@ -7,7 +7,7 @@ data Token = Token {
   line :: Int
 } deriving (Show, Eq)
 
-data TokenType = Identifier | LiteralType Literal | Eof deriving (Eq, Show)
+data TokenType = Identifier | LiteralType Literal | Equals | DoubleEquals | Eof deriving (Eq, Show)
 
 data Literal = TInt Int | TFloat Float | TDouble Double | TChar Char deriving (Eq, Show)
 

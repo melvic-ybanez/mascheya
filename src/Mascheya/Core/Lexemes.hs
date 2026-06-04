@@ -56,3 +56,6 @@ dot = '.'
 
 floatSuffix :: Char
 floatSuffix = 'f'
+
+equals :: Char
+equals = '='

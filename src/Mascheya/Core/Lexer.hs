@@ -53,10 +53,13 @@ scanNext = scan . prepareNext
   where prepareNext lexer = lexer { start = current lexer }
 
 scan :: Scan
-scan lexer = case char of 
-  c | isDigit c -> succeed $ scanNumber updatedLexer
-  c -> Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
-  where (char, updatedLexer) = readAndAdvance lexer
+scan lexer = scanWith $ case char of 
+  c | isDigit c -> succeed . scanNumber
+  '=' -> addTokenOrElse Lexemes.equals Token.Equals Token.DoubleEquals
+  c -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
+  where 
+    scanWith = ( $ advancedLexer)
+    (char, advancedLexer) = readAndAdvance lexer
 
 readAndAdvance :: Lexer -> (Char, Lexer)
 readAndAdvance lexer = (source lexer !! current lexer, advance lexer)
@@ -82,8 +85,7 @@ scanNumber lexer = addToken (newTokenF number) number
         in (fractional, newFracToken)
       else (wholeNumber, newIntToken)
 
-scanWholeNumber :: Endo Lexer
-scanWholeNumber = advanceWhile $ isDigit . peek
+    scanWholeNumber = advanceWhile $ isDigit . peek
 
 advanceWhile :: (Lexer -> Bool) -> Endo Lexer
 advanceWhile pred' lexer = if pred' lexer then advance lexer else lexer
@@ -113,3 +115,13 @@ updateTokens f lexer = lexer { tokenStack = f (tokenStack lexer) }
 addToken :: TokenType -> Endo Lexer
 addToken tokenType lexer = updateTokens add' lexer
   where add' tokens' = (Token tokenType (lexeme lexer) (line lexer)) : tokens'
+
+addTokenOrElse :: Char -> TokenType -> TokenType -> Scan
+addTokenOrElse char typeIfNotMatched typeIfMatched lexer = Result.succeed 
+  $ maybe (addToken typeIfMatched lexer) (addToken typeIfNotMatched) 
+  $ matchChar char lexer
+
+matchChar :: Char -> Pure Maybe Lexer
+matchChar expected lexer = 
+  if isAtEnd lexer || source lexer !! current lexer /= expected 
+  then Nothing else Just $ advance lexer  
