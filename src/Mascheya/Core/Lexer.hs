@@ -58,6 +58,7 @@ scan lexer = scanWith $ case char of
     | c == Lexemes.leftParen -> addTokenOk Token.LeftParen 
     | c == Lexemes.rightParen -> addTokenOk Token.RightParen
     | c == Lexemes.lambdaSymbol -> addTokenOk Token.LambdaSymbol
+    | c == Lexemes.comma -> addTokenOk Token.Comma
     | c == Lexemes.equals -> addTokenOrElse c Token.Equals Token.DoubleEquals    
     | otherwise -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
   where 

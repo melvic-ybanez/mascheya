@@ -10,7 +10,8 @@ data Token = Token {
 data TokenType = Identifier | LiteralType Literal 
   | Equals | DoubleEquals 
   | LeftParen | RightParen 
-  | LambdaSymbol | Eof deriving (Eq, Show)
+  | LambdaSymbol | Comma 
+  | Eof deriving (Eq, Show)
 
 data Literal = TInt Int | TFloat Float | TDouble Double | TChar Char deriving (Eq, Show)
 
