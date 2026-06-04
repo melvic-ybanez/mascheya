@@ -12,6 +12,15 @@ times = '*'
 divide :: Char
 divide = '/'
 
+modulo :: Char
+modulo = '%'
+
+lessThan :: Char
+lessThan = '<'
+
+greaterThan :: Char
+greaterThan = '>'
+
 rightArrow :: String
 rightArrow = "->"
 

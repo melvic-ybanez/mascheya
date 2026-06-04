@@ -12,9 +12,9 @@ import Mascheya.Core.Token (Token(Token), fromLine, TokenType)
 import qualified Data.Char as Char
 import Mascheya.Core.Types
 import Data.Char(chr)
-import qualified Mascheya.Core.Token as Token
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Lexemes as Lexemes
+import qualified Mascheya.Core.Token as Token
 
 data Lexer = Lexer {
   source :: String,
@@ -58,6 +58,11 @@ scan lexer = scanWith $ case char of
     | c == Lexemes.leftParen -> addTokenOk Token.LeftParen 
     | c == Lexemes.rightParen -> addTokenOk Token.RightParen
     | c == Lexemes.lambdaSymbol -> addTokenOk Token.LambdaSymbol
+    | c == Lexemes.plus -> addTokenOk Token.Plus
+    | c == Lexemes.minus -> addTokenOk Token.Minus
+    | c == Lexemes.times -> addTokenOk Token.Times
+    | c == Lexemes.divide -> addTokenOk Token.Divide
+    | c == Lexemes.modulo -> addTokenOk Token.Modulo
     | c == Lexemes.comma -> addTokenOk Token.Comma
     | c == Lexemes.equals -> addTokenOrElse c Token.Equals Token.DoubleEquals    
     | otherwise -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 

@@ -2,7 +2,7 @@ module Mascheya.Core.Ast.Core where
 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Display (Display(display))
-import Mascheya.Core.Token
+import Mascheya.Core.Token (Token)
 
 data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
   | AppExpr App | BuiltinFuncExpr BuiltinFunc Int

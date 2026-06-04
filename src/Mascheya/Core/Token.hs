@@ -11,6 +11,7 @@ data TokenType = Identifier | LiteralType Literal
   | Equals | DoubleEquals 
   | LeftParen | RightParen 
   | LambdaSymbol | Comma 
+  | Plus | Minus | Times | Divide | Modulo
   | Eof deriving (Eq, Show)
 
 data Literal = TInt Int | TFloat Float | TDouble Double | TChar Char deriving (Eq, Show)
