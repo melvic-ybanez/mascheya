@@ -59,3 +59,9 @@ floatSuffix = 'f'
 
 equals :: Char
 equals = '='
+
+leftParen :: Char
+leftParen = '('
+
+rightParen :: Char
+rightParen = ')'

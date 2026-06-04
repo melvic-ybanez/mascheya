@@ -30,10 +30,11 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
   where 
     eval' (ArithFunc anyArith) = eval'' anyArith
       where 
-        eval'' (Arith Plus a b) = evalArith a b (+) (+)
-        eval'' (Arith Minus a b) = evalArith a b (-) (-)
-        eval'' (Arith Times a b) = evalArith a b (*) (*)
-        eval'' (Arith Divide a b) = evalArith a b div (/)
+        eval'' (Arith op a b) = case op of
+          Plus -> evalArith a b (+) (+)
+          Minus -> evalArith a b (-) (-)
+          Times -> evalArith a b (*) (*)
+          Divide -> evalArith a b div (/)
 
         evalArith :: Expr -> Expr -> (Int -> Int -> Int) -> 
           (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
@@ -46,7 +47,7 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
             ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
             (Bottom, _) -> returnBottom
             (_, Bottom) -> returnBottom
-            (_, _) -> constFailM $ InternalError $ TypecheckingFailed                      
+            (_, _) -> constFailM $ InternalError $ TypecheckingFailed
     eval' (IfFunc (If cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
       where 
         handle (ConstVal (BoolVal True)) = eval ifTrue
@@ -60,9 +61,10 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
       return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
 eval (ConstExpr const') = constSucceedM $ ConstVal $ eval' const'
     where 
-      eval' (NumConst (CInt int)) = IntVal int
-      eval' (NumConst (CFloat float)) = FloatVal float
-      eval' (NumConst (CDouble double)) = DoubleVal double
+      eval' (NumConst num) = case num of
+        CInt int -> IntVal int
+        CFloat float -> FloatVal float
+        CDouble double -> DoubleVal double
       eval' (CharConst (CChar char)) = CharVal char
 
 force :: Thunk s -> Out s

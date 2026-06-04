@@ -35,7 +35,7 @@ fromSource source = fmap add1Line $ loop initLexer
     initLexer = Lexer source 0 0 1 []
 
     loop lexer | isAtEnd lexer = succeed lexer
-    loop lexer = handle $ scanNext lexer
+      | otherwise = handle $ scanNext lexer
       where handle error'@(Left _) = error'
             handle (Right lexer') = loop lexer'
 
@@ -55,8 +55,10 @@ scanNext = scan . prepareNext
 scan :: Scan
 scan lexer = scanWith $ case char of 
   c | isDigit c -> succeed . scanNumber
-  '=' -> addTokenOrElse Lexemes.equals Token.Equals Token.DoubleEquals
-  c -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
+    | c == Lexemes.leftParen -> Result.succeed . addToken Token.LeftParen 
+    | c == Lexemes.rightParen -> Result.succeed . addToken Token.RightParen
+    | c == Lexemes.equals -> addTokenOrElse c Token.Equals Token.DoubleEquals
+    | otherwise -> const $ Result.fail $ LexerError $ InvalidCharacter (line lexer) c 
   where 
     scanWith = ( $ advancedLexer)
     (char, advancedLexer) = readAndAdvance lexer
