@@ -24,7 +24,7 @@ data BuiltinFunc = ArithFunc Arith | IfFunc If | ListFunc CList
 
 data Arith = Arith ArithKind Expr Expr deriving Show
 
-data ArithKind = Plus | Minus | Times | Divide deriving Show
+data ArithKind = Plus | Minus | Times | Divide | Modulo deriving Show
 data CList = Cons Expr Expr | Nil deriving Show
 data If = If Expr Expr Expr deriving Show
 
@@ -69,6 +69,7 @@ instance Display Expr where
         Minus -> Lexemes.minus
         Times -> Lexemes.times
         Divide -> Lexemes.divide
+        Modulo -> Lexemes.modulo
       display' (IfFunc (If cond ifTrue ifFalse)) = Lexemes.ifLexeme 
         ++ display Lexemes.space ++ display cond 
         ++ display Lexemes.space ++ display ifTrue 

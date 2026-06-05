@@ -25,41 +25,47 @@ eval (AppExpr (App func arg')) = \env -> eval func env >>= flip handleFuncVal en
       argThunk <- lift $ newSTRef $ Delayed arg' callerEnv
       extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
       eval (body closure) extendedEnv
-    handleFuncVal _ = constFailM $ RuntimeError $ notAFunction func
+    handleFuncVal _ = constFailT $ RuntimeError $ notAFunction func
 eval (BuiltinFuncExpr builtin _) = eval' builtin
   where 
     eval' (ArithFunc anyArith) = eval'' anyArith
       where 
         eval'' (Arith op a b) = case op of
-          Plus -> evalArith a b (+) (+)
-          Minus -> evalArith a b (-) (-)
-          Times -> evalArith a b (*) (*)
-          Divide -> evalArith a b div (/)
+          Plus -> evalArith (+) (+)
+          Minus -> evalArith (-) (-)
+          Times -> evalArith (*) (*)
+          Divide -> evalArith div (/)
+          Modulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
+              ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
+              (_, _) -> constTypeErrorT
 
-        evalArith :: Expr -> Expr -> (Int -> Int -> Int) -> 
-          (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
-        evalArith a b f g = runReaderT $ do
-          aVal <- ReaderT $ eval a
-          bVal <- ReaderT $ eval b
-          ReaderT $ case (aVal, bVal) of                    
-            ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
-            ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
-            ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
-            (Bottom, _) -> returnBottom
-            (_, Bottom) -> returnBottom
-            (_, _) -> constFailM $ InternalError $ TypecheckingFailed
+          where 
+            evalArithWith f = runReaderT $ do
+              aVal <- ReaderT $ eval a
+              bVal <- ReaderT $ eval b
+              ReaderT $ f aVal bVal
+
+            evalArith :: (Int -> Int -> Int) -> 
+              (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
+            evalArith f g = evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
+                ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
+                ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
+                ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
+                (Bottom, _) -> returnBottom
+                (_, Bottom) -> returnBottom
+                (_, _) -> constTypeErrorT
     eval' (IfFunc (If cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
       where 
         handle (ConstVal (BoolVal True)) = eval ifTrue
         handle (ConstVal (BoolVal False)) = eval ifFalse
         handle Bottom = returnBottom
-        handle _ = constFailM $ InternalError $ TypecheckingFailed
-    eval' (ListFunc Nil) = constSucceedM $ ListVal NilVal
+        handle _ = constTypeErrorT
+    eval' (ListFunc Nil) = constSucceedT $ ListVal NilVal
     eval' (ListFunc (Cons h t)) = \env -> do
       dh <- lift $ newSTRef $ Delayed h env
       dt <- lift $ newSTRef $ Delayed t env
       return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
-eval (ConstExpr const') = constSucceedM $ ConstVal $ eval' const'
+eval (ConstExpr const') = constSucceedT $ ConstVal $ eval' const'
     where 
       eval' (NumConst num) = case num of
         CInt int -> IntVal int
@@ -90,13 +96,13 @@ reify (ListVal (ConsVal h t)) = do
 reify Bottom = return PureBottom
 
 returnBottom :: VEnv s -> Out s
-returnBottom = constSucceedM Bottom
+returnBottom = constSucceedT Bottom
 
-constSucceedM :: Value s -> VEnv s -> Out s
-constSucceedM = constM . Result.succeedT
+constSucceedT :: Value s -> VEnv s -> Out s
+constSucceedT = const . Result.succeedT
 
-constFailM :: Failure -> VEnv s -> Out s
-constFailM = constM . Result.failT
+constFailT :: Failure -> VEnv s -> Out s
+constFailT = const . Result.failT
 
-constM :: ResultT (ST s) (Value s) -> VEnv s -> Out s
-constM = const
+constTypeErrorT :: VEnv s -> Out s
+constTypeErrorT = constFailT $ InternalError $ TypecheckingFailed
