@@ -3,11 +3,10 @@
 module Mascheya.Core.Lexer where
 
 import Mascheya.Core.Result (
-        Result, 
-        succeed, 
-        LexerError (InvalidCharacter), 
-        Failure (LexerError)
-    )
+  Result, 
+  succeed, 
+  LexerError (InvalidCharacter), 
+  Failure (LexerError))
 import Mascheya.Core.Token (Token(Token), fromLine, TokenType)
 import qualified Data.Char as Char
 import Mascheya.Core.Types

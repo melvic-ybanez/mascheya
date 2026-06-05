@@ -36,8 +36,8 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
           Times -> evalArith (*) (*)
           Divide -> evalArith div (/)
           Modulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
-              ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
-              (_, _) -> constTypeErrorT
+            ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
+            (_, _) -> constTypeErrorT
 
           where 
             evalArithWith f = runReaderT $ do
@@ -48,12 +48,12 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
             evalArith :: (Int -> Int -> Int) -> 
               (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
             evalArith f g = evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
-                ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
-                ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
-                ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
-                (Bottom, _) -> returnBottom
-                (_, Bottom) -> returnBottom
-                (_, _) -> constTypeErrorT
+              ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
+              ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
+              ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
+              (Bottom, _) -> returnBottom
+              (_, Bottom) -> returnBottom
+              (_, _) -> constTypeErrorT
     eval' (IfFunc (If cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
       where 
         handle (ConstVal (BoolVal True)) = eval ifTrue
@@ -66,12 +66,12 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
       dt <- lift $ newSTRef $ Delayed t env
       return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
 eval (ConstExpr const') = constSucceedT $ ConstVal $ eval' const'
-    where 
-      eval' (NumConst num) = case num of
-        CInt int -> IntVal int
-        CFloat float -> FloatVal float
-        CDouble double -> DoubleVal double
-      eval' (CharConst (CChar char)) = CharVal char
+  where 
+    eval' (NumConst num) = case num of
+      CInt int -> IntVal int
+      CFloat float -> FloatVal float
+      CDouble double -> DoubleVal double
+    eval' (CharConst (CChar char)) = CharVal char
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState

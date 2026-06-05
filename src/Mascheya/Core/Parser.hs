@@ -1,7 +1,8 @@
 module Mascheya.Core.Parser where
 
 import Mascheya.Core.Token
-import Mascheya.Core.Parser.ParseResult (ParseResult, succeed, fromStep, mapValue)
+import Mascheya.Core.Parser.ParseResult (
+  ParseResult, succeed, fromStep, mapValue)
 import Mascheya.Core.Parser.Types
 import qualified Mascheya.Core.Token as T
 import qualified Mascheya.Core.Result as Result
@@ -15,7 +16,7 @@ fromTokens = flip Parser 0
 
 parse :: Parser -> ParseResult [Expr]
 parse parser | isAtEnd parser = succeed [] parser
-parse parser = mapValue (\expr -> [expr]) $ parseExpr parser
+  | otherwise = mapValue (\expr -> [expr]) $ parseExpr parser
 
 parseExpr :: Parser -> ParseResult Expr
 parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
@@ -31,20 +32,22 @@ parseLiteral = fmap next' . matchAnyWith pred'
     pred' (T.LiteralType _) = True
     pred' _ = False
 
-    next' result = Step (mkLit $ tokenType $ previousToken result) result
+    next' result = Step (newLit $ tokenType $ previousToken result) result
       where 
-        mkLit (T.LiteralType (T.TInt i)) = S.SInt i
-        mkLit (T.LiteralType (T.TFloat f)) = S.SFloat f
-        mkLit (T.LiteralType (T.TDouble d)) = S.SDouble d
-        mkLit (T.LiteralType (T.TChar c)) = S.SChar c
+        newLit (T.LiteralType lit) = case lit of
+          T.TInt i -> S.SInt i
+          T.TFloat f -> S.SFloat f
+          T.TDouble d -> S.SDouble d
+          T.TChar c -> S.SChar c
 
 matchAny :: [TokenType] -> Parser -> Maybe Parser
 matchAny tokenTypes = matchAnyWith (\tokenType' -> elem tokenType' tokenTypes)
 
 matchAnyWith :: (TokenType -> Bool) -> Parser -> Maybe Parser
 matchAnyWith pred' parser = processResult $ checkWith pred' parser
-  where processResult True = Just $ next $ advance parser
-        processResult False = Nothing
+  where 
+    processResult True = Just $ next $ advance parser
+    processResult False = Nothing
 
 checkWith :: (TokenType -> Bool) -> Parser -> Bool 
 checkWith pred' parser = if isAtEnd parser then False else pred' $ tokenType $ peek parser
