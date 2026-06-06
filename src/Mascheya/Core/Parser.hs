@@ -2,10 +2,11 @@ module Mascheya.Core.Parser where
 
 import qualified Data.Char as Char
 import Prelude hiding (repeat)
-import Mascheya.Core.Ast.Source (Literal(SInt), Expr (Literal))
+import Mascheya.Core.Ast.Source (SInt (SInt))
 import Mascheya.Core.Result (Result, parseError, ParseError (Invalid, Eof))
 
-type Parser a = String -> Result (a, String)
+type Parser a = Parse (a, String)
+type Parse a = String -> Result a
 
 parse :: Parser a -> String -> Result a
 parse parser = (>>= handle) . parser
@@ -13,13 +14,16 @@ parse parser = (>>= handle) . parser
     handle (val, "") = return val
     handle (_, rest) = parseError $ Invalid "characters" rest
 
-parseInt :: String -> Result Expr
-parseInt = (Literal . SInt . read <$>) . parse int 
+parseInt :: Parse SInt
+parseInt = (SInt . read <$>) . parse int 
 
 int :: Parser String
 int source = peek source >>= \c ->
   if c == '-' 
-  then (\(cs, css) -> (c : cs, css)) <$> (advance source >>= \(_, rest) -> nat rest) 
+  then do
+    (_, rest) <- advance source
+    (cs, css) <- nat rest
+    return (c : cs, css)
   else nat source
 
 nat :: Parser String

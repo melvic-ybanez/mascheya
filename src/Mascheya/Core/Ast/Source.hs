@@ -2,4 +2,7 @@ module Mascheya.Core.Ast.Source where
 
 data Expr = Literal Literal deriving Show
 
-data Literal = SInt Int | SFloat Float | SDouble Double | SChar Char deriving Show
+data Literal = IntLit SInt | FloatLit SFloat | SDouble Double | SChar Char deriving Show
+
+newtype SInt = SInt Int deriving Show
+newtype SFloat = SFloat Float deriving Show

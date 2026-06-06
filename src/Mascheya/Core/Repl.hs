@@ -10,6 +10,7 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.ST (runST)
 import Mascheya.Core.Eval (reify)
 import qualified Mascheya.Core.Parser as Parser
+import Mascheya.Core.Ast.Source (Expr(Literal), Literal (IntLit))
 
 repl :: IO ()
 repl = do
@@ -23,7 +24,7 @@ repl = do
   where 
     run input = do 
       sourceExpr <- Parser.parseInt input
-      coreExpr <- translateExpr $ sourceExpr
+      coreExpr <- translateExpr $ Literal $ IntLit sourceExpr
       runST $ runExceptT $ Eval.eval coreExpr Env.empty >>= reify    
     handleResult (Left error') = display error'
     handleResult (Right stVal) = display stVal
