@@ -8,5 +8,6 @@ import Mascheya.Core.Ast.Core
 
 translateExpr :: S.Expr -> Result C.Expr
 translateExpr (Literal lit) = succeed $ ConstExpr $ NumConst $ case lit of
-  IntLit (SInt val) ->  CInt val
-  DoubleLit (SDouble val) -> CDouble val
+  IntLit (SInt int) ->  CInt int
+  FloatLit (SFloat float) -> CFloat float
+  DoubleLit (SDouble double) -> CDouble double
