@@ -17,11 +17,8 @@ instance Display Float
 instance Display Double
 instance Display Bool
 
-instance (Display a) => Display [a] where
-  display displayables = intercalate "\n" $ fmap display displayables
-
 instance (Display a) => Display (NonEmpty a) where
-  display = display . toList
+  display = intercalate "\n" . fmap display . toList
 
 instance (Display a, Display b) => Display (Either a b) where
   display (Left a) = display a

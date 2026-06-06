@@ -20,7 +20,6 @@ library
       Mascheya.Core.Eval.Env
       Mascheya.Core.Eval.Value
       Mascheya.Core.Lexemes
-      Mascheya.Core.Lexer
       Mascheya.Core.Parser
       Mascheya.Core.Parser.ParseResult
       Mascheya.Core.Parser.Types

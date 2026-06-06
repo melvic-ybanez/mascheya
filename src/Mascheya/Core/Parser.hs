@@ -1,70 +1,43 @@
 module Mascheya.Core.Parser where
 
-import Mascheya.Core.Token
-import Mascheya.Core.Parser.ParseResult (
-  ParseResult, succeed, fromStep, mapValue)
-import Mascheya.Core.Parser.Types
-import qualified Mascheya.Core.Token as T
-import qualified Mascheya.Core.Result as Result
-import qualified Mascheya.Core.Ast.Source as S
-import Mascheya.Core.Ast.Source (Expr(..))
-import qualified Mascheya.Core.Parser.ParseResult as ParseResult
-import Mascheya.Core.Result (expectedError)
+import qualified Data.Char as Char
+import Prelude hiding (repeat)
+import Mascheya.Core.Ast.Source (Literal(SInt), Expr (Literal))
+import Mascheya.Core.Result (Result, parseError, ParseError (Invalid, Eof))
 
-fromTokens :: [Token] -> Parser
-fromTokens = flip Parser 0
+type Parser a = String -> Result (a, String)
 
-parse :: Parser -> ParseResult [Expr]
-parse parser | isAtEnd parser = succeed [] parser
-  | otherwise = mapValue (\expr -> [expr]) $ parseExpr parser
+parse :: Parser a -> String -> Result a
+parse parser = (>>= handle) . parser
+  where
+    handle (val, "") = return val
+    handle (_, rest) = parseError $ Invalid "characters" rest
 
-parseExpr :: Parser -> ParseResult Expr
-parseExpr parser = handle $ fmap fromStep $ parseLiteral parser
-  where 
-    handle Nothing = ParseResult.fail error' parser
-    handle (Just result) = mapValue (\r -> S.Literal r) result
+parseInt :: String -> Result Expr
+parseInt = (Literal . SInt . read <$>) . parse int 
 
-    error' = Result.ParseError $ expectedError (peek parser) "expression" "at start"
+int :: Parser String
+int source = peek source >>= \c ->
+  if c == '-' 
+  then (\(cs, css) -> (c : cs, css)) <$> (advance source >>= \(_, rest) -> nat rest) 
+  else nat source
 
-parseLiteral :: Parser -> Maybe (Step S.Literal)
-parseLiteral = fmap next' . matchAnyWith pred'
-  where 
-    pred' (T.LiteralType _) = True
-    pred' _ = False
+nat :: Parser String
+nat = repeat digit
 
-    next' result = Step (newLit $ tokenType $ previousToken result) result
-      where 
-        newLit (T.LiteralType lit) = case lit of
-          T.TInt i -> S.SInt i
-          T.TFloat f -> S.SFloat f
-          T.TDouble d -> S.SDouble d
-          T.TChar c -> S.SChar c
+digit :: Parser Char
+digit source = peek source >>= \c -> 
+  if Char.isDigit c then advance source else parseError $ Invalid "digit" source
 
-matchAny :: [TokenType] -> Parser -> Maybe Parser
-matchAny tokenTypes = matchAnyWith (\tokenType' -> elem tokenType' tokenTypes)
+repeat :: Parser Char -> Parser String
+repeat parser source = parser source >>= \(c, cs) -> case repeat parser cs of
+  Left _ -> return (c : [], cs)
+  Right (cs', css) -> return (c : cs', css)  
 
-matchAnyWith :: (TokenType -> Bool) -> Parser -> Maybe Parser
-matchAnyWith pred' parser = processResult $ checkWith pred' parser
-  where 
-    processResult True = Just $ next $ advance parser
-    processResult False = Nothing
+peek :: String -> Result Char
+peek "" = parseError Eof
+peek (c : _) = return c
 
-checkWith :: (TokenType -> Bool) -> Parser -> Bool 
-checkWith pred' parser = if isAtEnd parser then False else pred' $ tokenType $ peek parser
-
-check :: TokenType -> Parser -> Bool
-check tokenType' = checkWith $ \tt -> tt == tokenType'
-
-isAtEnd :: Parser -> Bool
-isAtEnd parser = tokenType (peek parser) == Eof
-
-peek :: Parser -> Token
-peek parser = tokens parser !! current parser
-
-previousToken :: Parser -> Token
-previousToken parser = tokens parser !! (current parser - 1)
-
-advance :: Parser -> Step Token
-advance parser = if isAtEnd parser then Step (previousToken parser) parser 
-  else Step (previousToken newParser) newParser
-      where newParser = parser { current = current parser + 1 }
+advance :: Parser Char
+advance [] = parseError Eof
+advance (s : ss) = return (s, ss)
