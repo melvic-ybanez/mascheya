@@ -25,7 +25,7 @@ parse parser = (>>= handle) . parser
     handle (_, rest) = parseError $ Invalid "characters" rest
 
 parseLit :: Parse Literal
-parseLit = run $ doubleParser <|> intParser
+parseLit = run $ intParser <|> doubleParser <|> floatParser
 
 intParser :: Parser Literal
 intParser = IntLit <$> Parser parseInt
@@ -33,11 +33,17 @@ intParser = IntLit <$> Parser parseInt
 doubleParser :: Parser Literal
 doubleParser = DoubleLit <$> Parser parseDouble
 
+floatParser :: Parser Literal
+floatParser = FloatLit <$> Parser parseFloat
+
 parseInt :: Parse SInt
 parseInt = (SInt . read <$>) . parse int 
 
 parseDouble :: Parse SDouble
 parseDouble = (SDouble . read <$>) . parse double
+
+parseFloat :: Parse SFloat
+parseFloat = (SFloat . read <$>) . parse float
 
 int :: Step String
 int source = advance source >>= \(c, rest) ->
@@ -53,6 +59,14 @@ double src = int src >>= \intResult@(whole, rest1) ->
       if c == Lexemes.dot 
       then (\(fractional, rest3) -> (whole ++ (c : fractional), rest3)) <$> nat rest2
       else return intResult
+
+float :: Step String
+float src = do
+  doubleRes@(doubleStr, rest) <- double src
+  (c, rest2) <- advance rest
+  if c == Lexemes.floatSuffix 
+  then return (doubleStr, rest2)
+  else return doubleRes
 
 nat :: Step String
 nat = repeat digit
