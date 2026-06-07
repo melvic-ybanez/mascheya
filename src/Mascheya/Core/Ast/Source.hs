@@ -1,6 +1,6 @@
 module Mascheya.Core.Ast.Source where
 
-data Expr = Literal Literal deriving Show
+data Expr = LiteralExpr Literal deriving Show
 
 data Literal = IntLit SInt | FloatLit SFloat | DoubleLit SDouble | SChar Char deriving Show
 
