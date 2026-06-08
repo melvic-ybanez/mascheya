@@ -11,14 +11,10 @@ import qualified Mascheya.Core.Lexemes as Lexemes
 import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
 import Control.Monad (join)
-import GHC.Float (double2Float)
-import Control.Monad.Reader (ReaderT(..))
 
 type Step a = Parse (a, String)
 newtype Parser a = Parser { run :: Parse a }
 type Parse a = String -> Result a
-
-newtype ParComb a = ParComb (Step a)
 
 parse :: Step a -> Parse a
 parse parser = (>>= handle) . parser
@@ -56,14 +52,11 @@ floatLitParser = FloatLit <$> floatParser
 floatParser :: Parser SFloat
 floatParser = Parser parseFloat
 
--- parseFloat :: Parse SFloat
--- parseFloat = (SFloat . read <$>) . parse float
-
 charParser :: Char -> Parser Char
-charParser = Parser . parse . char 
+charParser = Parser . parse . matchChar 
 
-char :: Char -> Step Char
-char c = (>>= handle) . advance
+matchChar :: Char -> Step Char
+matchChar c = (>>= handle) . advance
   where 
     handle (h, rest) | h == c = return (h, rest)
       | otherwise = parseError $ Expected [c] [h]
@@ -83,16 +76,8 @@ double src = int src >>= \intResult@(whole, rest1) ->
       then (\(fractional, rest3) -> (whole ++ (c : fractional), rest3)) <$> nat rest2
       else return intResult
 
--- float :: Step String
--- float src = do
---   doubleRes@(doubleStr, rest) <- double src
---   (c, rest2) <- advance rest
---   if c == Lexemes.floatSuffix 
---   then return (doubleStr, rest2)
---   else return doubleRes
-
 float :: Step String
-float = ((\((d, _), r) -> (d, r)) <$>) . (double <&> char 'f')
+float = ((\((d, _), r) -> (d, r)) <$>) . (double <&> matchChar 'f')
 
 nat :: Step String
 nat = repeat digit
