@@ -6,11 +6,13 @@ module Mascheya.Core.Parser where
 import qualified Data.Char as Char
 import Prelude hiding (repeat)
 import Mascheya.Core.Ast.Source 
-import Mascheya.Core.Result (Result, parseError, ParseError (Invalid, Eof))
+import Mascheya.Core.Result (Result, parseError, ParseError (Invalid, Eof, Expected))
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
 import Control.Monad (join)
+import GHC.Float (double2Float)
+import Control.Monad.Reader (ReaderT(..))
 
 type Step a = Parse (a, String)
 newtype Parser a = Parser { run :: Parse a }
@@ -25,16 +27,19 @@ parse parser = (>>= handle) . parser
     handle (_, rest) = parseError $ Invalid "characters" rest
 
 parseLit :: Parse Literal
-parseLit = run $ intParser <|> doubleParser <|> floatParser
+parseLit = run $ intLitParser <|> doubleLitParser <|> floatLitParser
 
-intParser :: Parser Literal
-intParser = IntLit <$> Parser parseInt
+intLitParser :: Parser Literal
+intLitParser = IntLit <$> intParser
 
-doubleParser :: Parser Literal
-doubleParser = DoubleLit <$> Parser parseDouble
+intParser :: Parser SInt
+intParser = Parser parseInt
 
-floatParser :: Parser Literal
-floatParser = FloatLit <$> Parser parseFloat
+doubleLitParser :: Parser Literal
+doubleLitParser = DoubleLit <$> doubleParser
+
+doubleParser :: Parser SDouble
+doubleParser = Parser parseDouble
 
 parseInt :: Parse SInt
 parseInt = (SInt . read <$>) . parse int 
@@ -44,6 +49,24 @@ parseDouble = (SDouble . read <$>) . parse double
 
 parseFloat :: Parse SFloat
 parseFloat = (SFloat . read <$>) . parse float
+
+floatLitParser :: Parser Literal
+floatLitParser = FloatLit <$> floatParser
+
+floatParser :: Parser SFloat
+floatParser = Parser parseFloat
+
+-- parseFloat :: Parse SFloat
+-- parseFloat = (SFloat . read <$>) . parse float
+
+charParser :: Char -> Parser Char
+charParser = Parser . parse . char 
+
+char :: Char -> Step Char
+char c = (>>= handle) . advance
+  where 
+    handle (h, rest) | h == c = return (h, rest)
+      | otherwise = parseError $ Expected [c] [h]
 
 int :: Step String
 int source = advance source >>= \(c, rest) ->
@@ -60,13 +83,16 @@ double src = int src >>= \intResult@(whole, rest1) ->
       then (\(fractional, rest3) -> (whole ++ (c : fractional), rest3)) <$> nat rest2
       else return intResult
 
+-- float :: Step String
+-- float src = do
+--   doubleRes@(doubleStr, rest) <- double src
+--   (c, rest2) <- advance rest
+--   if c == Lexemes.floatSuffix 
+--   then return (doubleStr, rest2)
+--   else return doubleRes
+
 float :: Step String
-float src = do
-  doubleRes@(doubleStr, rest) <- double src
-  (c, rest2) <- advance rest
-  if c == Lexemes.floatSuffix 
-  then return (doubleStr, rest2)
-  else return doubleRes
+float = ((\((d, _), r) -> (d, r)) <$>) . (double <&> char 'f')
 
 nat :: Step String
 nat = repeat digit
@@ -87,6 +113,12 @@ peek (c : _) = return c
 advance :: Step Char
 advance [] = parseError Eof
 advance (s : ss) = return (s, ss)
+
+(<&>) :: Step a -> Step b -> Step (a, b)
+(<&>) pa pb = \src -> do
+  (a, rest) <- pa src
+  (b, rest1) <- pb rest
+  return ((a, b), rest1)
   
 instance Alternative Parser where
   empty :: Parser a
@@ -97,7 +129,7 @@ instance Alternative Parser where
     run = \src -> case (run pA) src of
       Left _ -> (run pB) src
       success -> success
-  }
+  } 
 
 instance Applicative Parser where
   pure :: a -> Parser a
@@ -112,7 +144,7 @@ instance Applicative Parser where
 instance Functor Parser where
   fmap :: (a -> b) -> Parser a -> Parser b
   fmap f (Parser runA) = Parser {
-    run = \src -> f <$> runA src  
+    run = (f <$>) . runA
   }
 
 instance Monad Parser where
