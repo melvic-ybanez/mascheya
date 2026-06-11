@@ -29,7 +29,7 @@ failAll = Left
 failT :: Monad m => Failure -> ResultT m a
 failT = throwError . singleton
 
-data Failure = ParseError ParseError | RuntimeError RuntimeError 
+data Failure = ParseError ParseError Int | RuntimeError RuntimeError 
   | InternalError InternalError deriving Show
 
 data ParseError = Invalid String String | Expected String | Eof deriving Show
@@ -38,8 +38,8 @@ data RuntimeError = UndefinedVariable Token String | NotAFunction Expr String de
 
 data InternalError = TypecheckingFailed deriving Show
 
-parseError :: ParseError -> Result a
-parseError = fail . ParseError
+parseError :: ParseError -> Int -> Result a
+parseError error = fail . ParseError error
 
 displayLine :: Int -> String
 displayLine line = "[line " ++ display line ++ "]"
@@ -61,7 +61,7 @@ tag :: String -> String
 tag = (++ "]") . ("[" ++)
 
 instance Display Failure where
-  display (ParseError error) = tag "Parse Error" ++ " " ++ display error
+  display (ParseError error line) = "Parse Error at line " ++ show line ++ ". " ++ display error
   display (RuntimeError error) = tag "Runtime Error" ++ " " ++ display error
   display (InternalError error) = tag "Internal Error" ++ " " ++ display error
 

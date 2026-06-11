@@ -16,13 +16,13 @@ data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
 
 newState :: String -> State
-newState = flip State 0
+newState = flip State 1
 
 parse :: Parser a -> String -> Result a
 parse (Parser run') = (>>= handle) . run' . newState 
   where
     handle (val, (State [] _)) = Result.succeed val
-    handle (_, (State rest _)) = parseError $ Invalid "characters" rest
+    handle (_, (State rest line')) = parseError (Invalid "characters" rest) line'
 
 sLit :: Parser Literal
 sLit = floatLit <|> doubleLit <|> intLit
@@ -61,8 +61,8 @@ repeat pa = pa >>= \a -> Parser {
     Right (as, rest) -> Result.succeed (a : as, rest)
 }
 
-fail :: ParseError -> Parser a
-fail = Parser . const . parseError
+fail :: ParseError -> Int -> Parser a
+fail err = Parser . const . parseError err
 
 char :: Char -> Parser Char
 char = flip satExpect "character" . (==)
@@ -89,14 +89,20 @@ word = nonEmpty <|> return ""
 
 item :: Parser Char
 item = Parser $ \(State inp line') -> case inp of
-  [] -> parseError Eof
+  [] -> parseError Eof line'
   (x : xs) -> Result.succeed (x, State xs (if x == '\n' then line' + 1 else line'))
 
 satExpect :: (Char -> Bool) -> String -> Parser Char
 satExpect p e = sat p $ Expected e
 
 sat :: (Char -> Bool) -> ParseError -> Parser Char
-sat p e = item >>= \x -> if p x then pure x else fail e
+sat p e = Parser {
+  {- Note: we are not using the bind operator of the Parser itself
+    because it doesn't provide us with the updated state, which we
+    need for the error reporting. -}
+  run = \inp -> (run item) inp >>= \(x, state@(State _ line')) ->
+    if p x then Result.succeed (x, state) else parseError e line'
+}
 
 (<&>) :: Parser a -> Parser b -> Parser (a, b)
 (<&>) p q = do
@@ -126,7 +132,7 @@ instance Monad Parser where
 
 instance Alternative Parser where  
   empty :: Parser a
-  empty = fail Eof
+  empty = fail Eof 0
   
   (<|>) :: Parser a -> Parser a -> Parser a
   (<|>) (Parser runA) (Parser runB) = Parser {
