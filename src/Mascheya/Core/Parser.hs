@@ -1,137 +1,136 @@
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TupleSections #-}
 
 module Mascheya.Core.Parser where
 
-import qualified Data.Char as Char
-import Prelude hiding (repeat)
-import Mascheya.Core.Ast.Source 
-import Mascheya.Core.Result (Result, parseError, ParseError (Invalid, Eof, Expected))
-import qualified Mascheya.Core.Lexemes as Lexemes
-import Control.Applicative (Alternative (empty, (<|>)))
+import Mascheya.Core.Result (Result, parseError, ParseError (Eof, Expected, Invalid))
 import qualified Mascheya.Core.Result as Result
-import Control.Monad (join)
+import Prelude hiding (repeat, fail)
+import Data.Char (isDigit, isLower, isUpper)
+import Control.Applicative (Alternative (empty))
+import GHC.Base (Alternative((<|>)))
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Ast.Source
 
-type Step a = Parse (a, String)
-newtype Parser a = Parser { run :: Parse a }
-type Parse a = String -> Result a
+data State = State { source :: String, line :: Int }
+newtype Parser a = Parser { run :: State -> Result (a, State) }
 
-parse :: Step a -> Parse a
-parse parser = (>>= handle) . parser
+newState :: String -> State
+newState = flip State 0
+
+parse :: Parser a -> String -> Result a
+parse (Parser run') = (>>= handle) . run' . newState 
   where
-    handle (val, "") = return val
-    handle (_, rest) = parseError $ Invalid "characters" rest
+    handle (val, (State [] _)) = Result.succeed val
+    handle (_, (State rest _)) = parseError $ Invalid "characters" rest
 
-parseLit :: Parse Literal
-parseLit = run $ intLitParser <|> doubleLitParser <|> floatLitParser
+sLit :: Parser Literal
+sLit = floatLit <|> doubleLit <|> intLit
+  where
+    intLit = IntLit <$> sInt
+    doubleLit = DoubleLit <$> sDouble
+    floatLit = FloatLit <$> sFloat
 
-intLitParser :: Parser Literal
-intLitParser = IntLit <$> intParser
+sInt :: Parser SInt
+sInt = parseMap SInt int
 
-intParser :: Parser SInt
-intParser = Parser parseInt
+sDouble :: Parser SDouble
+sDouble = parseMap SDouble double
 
-doubleLitParser :: Parser Literal
-doubleLitParser = DoubleLit <$> doubleParser
+sFloat :: Parser SFloat
+sFloat = parseMap SFloat float
 
-doubleParser :: Parser SDouble
-doubleParser = Parser parseDouble
+parseMap :: Read a => (a -> b) -> Parser String -> Parser b
+parseMap f = ((f . read) <$> ) 
 
-parseInt :: Parse SInt
-parseInt = (SInt . read <$>) . parse int 
+int :: Parser String
+int = repeat digit
 
-parseDouble :: Parse SDouble
-parseDouble = (SDouble . read <$>) . parse double
-
-parseFloat :: Parse SFloat
-parseFloat = (SFloat . read <$>) . parse float
-
-floatLitParser :: Parser Literal
-floatLitParser = FloatLit <$> floatParser
-
-floatParser :: Parser SFloat
-floatParser = Parser parseFloat
-
-charParser :: Char -> Parser Char
-charParser = Parser . parse . matchChar 
-
-matchChar :: Char -> Step Char
-matchChar c = (>>= handle) . advance
+double :: Parser String
+double = combine <$> int <&> char Lexemes.dot <&> int
   where 
-    handle (h, rest) | h == c = return (h, rest)
-      | otherwise = parseError $ Expected [c] [h]
+    combine ((whole, dot), frac) = whole ++ [dot] ++ frac
 
-int :: Step String
-int source = advance source >>= \(c, rest) ->
-  if c == '-' 
-  then (\(n, rest2) -> (c : n, rest2)) <$> nat rest 
-  else nat source
+float :: Parser String
+float = fst <$> double <&> char Lexemes.floatSuffix
 
-double :: Step String
-double src = int src >>= \intResult@(whole, rest1) ->
-  case advance rest1 of
-    Left _ -> return intResult
-    Right (c, rest2) -> 
-      if c == Lexemes.dot 
-      then (\(fractional, rest3) -> (whole ++ (c : fractional), rest3)) <$> nat rest2
-      else return intResult
+repeat :: Parser a -> Parser [a]
+repeat pa = pa >>= \a -> Parser {
+  run = \state -> case run (repeat pa) state of
+    Left _ -> Result.succeed ([a], state)
+    Right (as, rest) -> Result.succeed (a : as, rest)
+}
 
-float :: Step String
-float = ((\((d, _), r) -> (d, r)) <$>) . (double <&> matchChar 'f')
+fail :: ParseError -> Parser a
+fail = Parser . const . parseError
 
-nat :: Step String
-nat = repeat digit
+char :: Char -> Parser Char
+char = flip satExpect "character" . (==)
 
-digit :: Step Char
-digit src = peek src >>= \c ->
-  if Char.isDigit c then advance src else parseError $ Invalid "digit" src
+digit :: Parser Char
+digit = satExpect isDigit "digit"
 
-repeat :: Step Char -> Step String
-repeat parser src = parser src >>= \(c, cs) -> case repeat parser cs of
-  Left _ -> return (c : [], cs)
-  Right (cs', css) -> return (c : cs', css)  
+lower :: Parser Char
+lower = satExpect isLower "lower-case character"
 
-peek :: Parse Char
-peek "" = parseError Eof
-peek (c : _) = return c
+upper :: Parser Char
+upper = satExpect isUpper "uper-case character"
 
-advance :: Step Char
-advance [] = parseError Eof
-advance (s : ss) = return (s, ss)
+letter :: Parser Char
+letter = lower <|> upper
 
-(<&>) :: Step a -> Step b -> Step (a, b)
-(<&>) pa pb = \src -> do
-  (a, rest) <- pa src
-  (b, rest1) <- pb rest
-  return ((a, b), rest1)
-  
-instance Alternative Parser where
-  empty :: Parser a
-  empty = Parser $ const $ parseError Eof
+alphanum :: Parser Char
+alphanum = letter <|> digit
 
-  (<|>) :: Parser a -> Parser a -> Parser a
-  (<|>) pA pB = Parser {
-    run = \src -> case (run pA) src of
-      Left _ -> (run pB) src
-      success -> success
-  } 
+word :: Parser String
+word = nonEmpty <|> return ""
+  where 
+    nonEmpty = (\(x, xs) -> x : xs) <$> letter <&> word
 
-instance Applicative Parser where
-  pure :: a -> Parser a
-  pure val = Parser $ const $ Result.succeed val 
-  
-  (<*>) :: Parser (a -> b) -> Parser a -> Parser b
-  (<*>) parseF parseA = do
-    f <- parseF
-    a <- parseA
-    return $ f a
+item :: Parser Char
+item = Parser $ \(State inp line') -> case inp of
+  [] -> parseError Eof
+  (x : xs) -> Result.succeed (x, State xs (if x == '\n' then line' + 1 else line'))
+
+satExpect :: (Char -> Bool) -> String -> Parser Char
+satExpect p e = sat p $ Expected e
+
+sat :: (Char -> Bool) -> ParseError -> Parser Char
+sat p e = item >>= \x -> if p x then pure x else fail e
+
+(<&>) :: Parser a -> Parser b -> Parser (a, b)
+(<&>) p q = do
+  a <- p
+  b <- q
+  return (a, b)
 
 instance Functor Parser where
   fmap :: (a -> b) -> Parser a -> Parser b
-  fmap f (Parser runA) = Parser {
-    run = (f <$>) . runA
-  }
+  fmap f p = p >>= \res -> return $ f res
+
+instance Applicative Parser where
+  pure :: a -> Parser a
+  pure v = Parser $ Result.succeed . (v, )
+
+  (<*>) :: Parser (a -> b) -> Parser a -> Parser b
+  (<*>) pab pa = do
+    f <- pab
+    a <- pa
+    return $ f a
 
 instance Monad Parser where
   (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-  (>>=) parseA = join . (<$> parseA)
+  (>>=) (Parser pa) f = Parser {
+    run = \inp -> pa inp >>= \(val, rest) -> run (f val) rest
+  }
+
+instance Alternative Parser where  
+  empty :: Parser a
+  empty = fail Eof
+  
+  (<|>) :: Parser a -> Parser a -> Parser a
+  (<|>) (Parser runA) (Parser runB) = Parser {
+    run = \inp -> case runA inp of
+      Left _ -> runB inp
+      right -> right 
+  }

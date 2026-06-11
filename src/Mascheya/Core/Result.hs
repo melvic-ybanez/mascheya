@@ -32,7 +32,7 @@ failT = throwError . singleton
 data Failure = ParseError ParseError | RuntimeError RuntimeError 
   | InternalError InternalError deriving Show
 
-data ParseError = Invalid String String | Expected String String | Eof deriving Show
+data ParseError = Invalid String String | Expected String | Eof deriving Show
 
 data RuntimeError = UndefinedVariable Token String | NotAFunction Expr String deriving Show
 
@@ -67,7 +67,7 @@ instance Display Failure where
 
 instance Display ParseError where
   display (Invalid expected source) = "Invalid " ++ expected ++ ": " ++ source
-  display (Expected expected got) = "Expected: " ++ expected ++ ". Got: " ++ got
+  display (Expected expected) = "Expected: " ++ expected
   display Eof = "End of file"
 
 instance Display RuntimeError where
