@@ -75,6 +75,12 @@ space = ' '
 escapePrefix :: Char
 escapePrefix = '\\'
 
+octalPrefix :: String
+octalPrefix = "\\o"
+
+hexPrefix :: String
+hexPrefix = "\\x"
+
 singleQuote :: Char
 singleQuote = '\''
 

@@ -65,11 +65,15 @@ unescaped :: Parser Char
 unescaped = lower <|> upper <|> digit <|> symbol <|> special <|> space <|> ascii
 
 escaped :: Parser Char
-escaped = unescape <$> char Lexemes.escapePrefix <&> (charesc <|> codePoint <|> ascii)
+escaped = withLine (codePoint <|> (str [Lexemes.escapePrefix] <&> (charesc <|> ascii))) >>= unescape
   where 
-    unescape (prefix, ch) = case readLitChar [prefix, ch] of
-      [(result, _)] -> result
-      _ -> ch
+    unescape ((prefix, ch), line') = case readLitChar $ prefix ++ [ch] of
+      [(result, _)] -> return result
+      _ -> fail (Expected "escapeable character") line'
+    codePoint = digit' <|> octal' <|> hex'
+    digit' = str [Lexemes.escapePrefix] <&> digit
+    octal' = str Lexemes.octalPrefix <&> octal
+    hex' = str Lexemes.hexPrefix <&> hex
 
 repeat :: Parser a -> Parser [a]
 repeat pa = pa >>= \a -> Parser {
@@ -77,6 +81,10 @@ repeat pa = pa >>= \a -> Parser {
     Left _ -> Result.succeed ([a], state)
     Right (as, rest) -> Result.succeed (a : as, rest)
 }
+
+str :: String -> Parser String
+str [] = return []
+str (x : xs) = (\(c, cs) -> c : cs) <$> char x <&> str xs
 
 fail :: ParseError -> Int -> Parser a
 fail err = Parser . const . parseError err
@@ -114,9 +122,6 @@ symbol = satisfyExpect isSymbol "symbolic character"
 special :: Parser Char
 special = satisfyExpect (`elem` "(),;[]`{}") "special character"
 
-codePoint :: Parser Char
-codePoint = digit <|> hex <|> octal
-
 hex :: Parser Char
 hex = satisfyExpect isHexDigit "hexadecimal"
 
@@ -140,12 +145,11 @@ satisfyExpect :: (Char -> Bool) -> String -> Parser Char
 satisfyExpect p e = satisfy p $ Expected e
 
 satisfy :: (Char -> Bool) -> ParseError -> Parser Char
-satisfy p e = Parser {
-  {- Note: we are not using the bind operator of the Parser itself
-    because it doesn't provide us with the updated state, which we
-    need for the error reporting. -}
-  run = \inp -> (run item) inp >>= \(x, state@(State _ line')) ->
-    if p x then Result.succeed (x, state) else parseError e line'
+satisfy p e = withLine item >>= \(x, l) -> if p x then return x else fail e l
+
+withLine :: Parser a -> Parser (a, Int)
+withLine p = p >>= \a -> Parser {
+  run = \inp@(State _ line') -> Result.succeed ((a, line'), inp)
 }
 
 (<&>) :: Parser a -> Parser b -> Parser (a, b)
