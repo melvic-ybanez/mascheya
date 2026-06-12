@@ -23,7 +23,7 @@ repl = do
     repl
   where 
     run input = do 
-      sourceExpr <- Parser.parse Parser.sLit input
+      sourceExpr <- Parser.parse Parser.sLiteral input
       coreExpr <- translateExpr $ LiteralExpr sourceExpr
       runST $ runExceptT $ Eval.eval coreExpr Env.empty >>= reify    
     handleResult (Left error') = display error'

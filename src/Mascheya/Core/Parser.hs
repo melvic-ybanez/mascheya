@@ -6,7 +6,7 @@ module Mascheya.Core.Parser where
 import Mascheya.Core.Result (Result, parseError, ParseError (Eof, Expected, Invalid))
 import qualified Mascheya.Core.Result as Result
 import Prelude hiding (repeat, fail)
-import Data.Char (isDigit, isLower, isUpper)
+import Data.Char 
 import Control.Applicative (Alternative (empty))
 import GHC.Base (Alternative((<|>)))
 import qualified Mascheya.Core.Lexemes as Lexemes
@@ -24,8 +24,11 @@ parse (Parser run') = (>>= handle) . run' . newState
     handle (val, (State [] _)) = Result.succeed val
     handle (_, (State rest line')) = parseError (Invalid "characters" rest) line'
 
-sLit :: Parser Literal
-sLit = floatLit <|> doubleLit <|> intLit
+sLiteral :: Parser Literal
+sLiteral = NumLit <$> sNum <|> CharLit <$> sChar
+
+sNum :: Parser SNum
+sNum = floatLit <|> doubleLit <|> intLit
   where
     intLit = IntLit <$> sInt
     doubleLit = DoubleLit <$> sDouble
@@ -39,6 +42,10 @@ sDouble = parseMap SDouble double
 
 sFloat :: Parser SFloat
 sFloat = parseMap SFloat float
+
+sChar :: Parser SChar
+sChar = (\((_, content), _) -> SChar content) <$> char Lexemes.singleQuote 
+  <&> (escaped <|> unescaped) <&> char Lexemes.singleQuote
 
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
 parseMap f = ((f . read) <$> ) 
@@ -54,6 +61,16 @@ double = combine <$> int <&> char Lexemes.dot <&> int
 float :: Parser String
 float = fst <$> double <&> char Lexemes.floatSuffix
 
+unescaped :: Parser Char
+unescaped = lower <|> upper <|> digit <|> symbol <|> special <|> space <|> ascii
+
+escaped :: Parser Char
+escaped = unescape <$> char Lexemes.escapePrefix <&> (charesc <|> codePoint <|> ascii)
+  where 
+    unescape (prefix, ch) = case readLitChar [prefix, ch] of
+      [(result, _)] -> result
+      _ -> ch
+
 repeat :: Parser a -> Parser [a]
 repeat pa = pa >>= \a -> Parser {
   run = \state -> case run (repeat pa) state of
@@ -65,22 +82,49 @@ fail :: ParseError -> Int -> Parser a
 fail err = Parser . const . parseError err
 
 char :: Char -> Parser Char
-char = flip satExpect "character" . (==)
+char c = charExpect c [c]
+
+charExpect :: Char -> String -> Parser Char
+charExpect c = satisfyExpect (\a -> a == c) 
 
 digit :: Parser Char
-digit = satExpect isDigit "digit"
+digit = satisfyExpect isDigit "digit"
 
 lower :: Parser Char
-lower = satExpect isLower "lower-case character"
+lower = satisfyExpect isLower "lower-case character"
 
 upper :: Parser Char
-upper = satExpect isUpper "uper-case character"
+upper = satisfyExpect isUpper "uper-case character"
 
 letter :: Parser Char
 letter = lower <|> upper
 
 alphanum :: Parser Char
 alphanum = letter <|> digit
+
+space :: Parser Char
+space = satisfyExpect isSpace "space character"
+
+ascii :: Parser Char
+ascii = satisfyExpect isAscii "control character"
+
+symbol :: Parser Char
+symbol = satisfyExpect isSymbol "symbolic character"
+
+special :: Parser Char
+special = satisfyExpect (`elem` "(),;[]`{}") "special character"
+
+codePoint :: Parser Char
+codePoint = digit <|> hex <|> octal
+
+hex :: Parser Char
+hex = satisfyExpect isHexDigit "hexadecimal"
+
+octal :: Parser Char
+octal = satisfyExpect isOctDigit "octal"
+
+charesc :: Parser Char
+charesc = satisfyExpect (`elem` "'\"\\nrtvb") "escapeable character"
 
 word :: Parser String
 word = nonEmpty <|> return ""
@@ -90,13 +134,13 @@ word = nonEmpty <|> return ""
 item :: Parser Char
 item = Parser $ \(State inp line') -> case inp of
   [] -> parseError Eof line'
-  (x : xs) -> Result.succeed (x, State xs (if x == '\n' then line' + 1 else line'))
+  (x : xs) -> Result.succeed (x, State xs (if x == '\n' || x == '\r' then line' + 1 else line'))
 
-satExpect :: (Char -> Bool) -> String -> Parser Char
-satExpect p e = sat p $ Expected e
+satisfyExpect :: (Char -> Bool) -> String -> Parser Char
+satisfyExpect p e = satisfy p $ Expected e
 
-sat :: (Char -> Bool) -> ParseError -> Parser Char
-sat p e = Parser {
+satisfy :: (Char -> Bool) -> ParseError -> Parser Char
+satisfy p e = Parser {
   {- Note: we are not using the bind operator of the Parser itself
     because it doesn't provide us with the updated state, which we
     need for the error reporting. -}

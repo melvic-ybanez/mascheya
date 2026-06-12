@@ -71,3 +71,12 @@ rightParen = ')'
 
 space :: Char
 space = ' '
+
+escapePrefix :: Char
+escapePrefix = '\\'
+
+singleQuote :: Char
+singleQuote = '\''
+
+doubleQuote :: Char
+doubleQuote = '\"'

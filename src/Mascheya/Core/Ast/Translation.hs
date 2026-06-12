@@ -7,7 +7,9 @@ import Mascheya.Core.Ast.Source
 import Mascheya.Core.Ast.Core 
 
 translateExpr :: S.Expr -> Result C.Expr
-translateExpr (LiteralExpr lit) = succeed $ ConstExpr $ NumConst $ case lit of
-  IntLit (SInt int) ->  CInt int
-  FloatLit (SFloat float) -> CFloat float
-  DoubleLit (SDouble double) -> CDouble double
+translateExpr (LiteralExpr lit) = succeed $ ConstExpr $ case lit of
+  NumLit numlit -> NumConst $ case numlit of 
+    IntLit (SInt int) ->  CInt int
+    FloatLit (SFloat float) -> CFloat float
+    DoubleLit (SDouble double) -> CDouble double
+  CharLit (SChar ch) -> CharConst $ CChar ch
