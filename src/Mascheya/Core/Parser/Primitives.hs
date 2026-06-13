@@ -1,6 +1,6 @@
 module Mascheya.Core.Parser.Primitives where
 
-import Prelude hiding (fail, repeat)
+import Prelude hiding (pred, fail, repeat)
 
 import Mascheya.Core.Parser.Core 
 import Mascheya.Core.Result (ParseError (Expected, Eof), parseError)
@@ -28,7 +28,8 @@ unescaped = lower <|> upper <|> digit <|> symbol <|> special <|> space <|> ascii
 escaped :: Parser Char
 escaped = track escapedPair >>= unescape
   where 
-    escapedPair = codePoint <|> (str [Lexemes.escapePrefix] <&> (singleEsc' <|> asciiEsc))
+    escapedPair = codePoint <|> 
+      (str [Lexemes.escapePrefix] <&> (caretControl' <|> singleEsc' <|> asciiEsc))
     unescape ((prefix, val), line') = case readLitChar $ prefix ++ val of
       [(result, _)] -> return result
       _ -> fail (Expected "escapeable character") line'
@@ -36,7 +37,8 @@ escaped = track escapedPair >>= unescape
     digit' = str [Lexemes.escapePrefix] <&> digit
     octal' = str Lexemes.octalPrefix <&> octal
     hex' = str Lexemes.hexPrefix <&> hex
-    singleEsc' = (\c -> [c]) <$> singleEsc
+    singleEsc' = (: []) <$> singleEsc
+    caretControl' = (\(c, d) -> [c, d]) <$> char '^' <&> caretControl
 
 repeat :: Parser a -> Parser [a]
 repeat pa = pa >>= \a -> Parser {
@@ -104,6 +106,9 @@ asciiEsc = Parser $ \state@(State _ line') -> maybe
     controlCodes = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL", "BS", 
       "HT", "LF", "VT", "FF", "CR", "SO","SI", "DLE", "DC1", "DC2", "DC3", "DC4", 
       "NAK", "SYN", "ETB", "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "DEL"]
+
+caretControl :: Parser Char
+caretControl = upper <|> satisfyExpect (`elem` "[]\\^_") "caret control"
 
 word :: Parser String
 word = nonEmpty <|> return ""
