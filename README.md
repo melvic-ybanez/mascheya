@@ -1,3 +1,6 @@
 # Mascheya
-A Polymorphically Typed Functional Programming Language, based on the
-lambda calculus, currently being written in Haskell.
+
+Mascheya is a polymorphically typed functional programming language based on the typed lambda calculus. 
+It is currently being written in Haskell.
+
+_More information about this project will be added here soon._
