@@ -33,10 +33,10 @@ escaped = track escapedPair >>= unescape
     unescape ((prefix, val), line') = case readLitChar $ prefix ++ val of
       [(result, _)] -> return result
       _ -> fail (Expected "escapeable character") line'
-    codePoint = (\(s, c) -> (s, [c])) <$> (digit' <|> octal' <|> hex')
-    digit' = str [Lexemes.escapePrefix] <&> digit
-    octal' = str Lexemes.octalPrefix <&> octal
-    hex' = str Lexemes.hexPrefix <&> hex
+    codePoint = digit' <|> octal' <|> hex'
+    digit' = str [Lexemes.escapePrefix] <&> repeat digit
+    octal' = str Lexemes.octalPrefix <&> repeat octal
+    hex' = str Lexemes.hexPrefix <&> repeat hex
     singleEsc' = (: []) <$> singleEsc
     caretControl' = (\(c, d) -> [c, d]) <$> char '^' <&> caretControl
 
