@@ -21,6 +21,9 @@ library
       Mascheya.Core.Eval.Value
       Mascheya.Core.Lexemes
       Mascheya.Core.Parser
+      Mascheya.Core.Parser.Core
+      Mascheya.Core.Parser.ExprParser
+      Mascheya.Core.Parser.Primitives
       Mascheya.Core.Repl
       Mascheya.Core.Result
       Mascheya.Core.Token
