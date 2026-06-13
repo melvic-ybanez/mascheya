@@ -17,8 +17,8 @@ fail err = Parser . const . parseError err
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
 parseMap f = ((f . read) <$> ) 
 
-withLine :: Parser a -> Parser (a, Int)
-withLine p = p >>= \a -> Parser {
+track :: Parser a -> Parser (a, Int)
+track p = p >>= \a -> Parser {
   run = \inp@(State _ line') -> Result.succeed ((a, line'), inp)
 }
 
