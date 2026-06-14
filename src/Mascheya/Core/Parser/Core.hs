@@ -80,6 +80,8 @@ instance Alternative Parser where
   (<|>) :: Parser a -> Parser a -> Parser a
   (<|>) (Parser runA) (Parser runB) = Parser {
     run = \inp -> case runA inp of
-      Left _ -> runB inp
+      Left errs1 -> case runB inp of
+        Left errs2 -> Left $ errs1 <> errs2
+        right -> right
       right -> right 
   }

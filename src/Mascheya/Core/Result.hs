@@ -8,6 +8,7 @@ import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
 import Mascheya.Core.Ast.Core (Expr)
 import Control.Monad.Except (ExceptT, MonadError (throwError))
+import Data.List (intercalate)
 
 type Result = Either FailureNel 
 type ResultT = ExceptT FailureNel 

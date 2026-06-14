@@ -50,6 +50,7 @@ newDouble = newNumeric CDouble
 newNumeric :: (a -> Numeric) -> a -> Expr
 newNumeric f = ConstExpr . NumConst . f
 
+-- TODO: Maybe we should focus on displaying the source AST instead
 instance Display Expr where
   display (VarExpr var) = display var
   display (LambdaExpr (Lambda param' body')) = display Lexemes.lambdaSymbol ++ display param' 
