@@ -8,7 +8,6 @@ import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
 import Mascheya.Core.Ast.Core (Expr)
 import Control.Monad.Except (ExceptT, MonadError (throwError))
-import Mascheya.Core.Token (Token (line))
 
 type Result = Either FailureNel 
 type ResultT = ExceptT FailureNel 
@@ -34,7 +33,7 @@ data Failure = ParseError ParseError Int | RuntimeError RuntimeError
 
 data ParseError = Invalid String String | Expected String | Eof deriving Show
 
-data RuntimeError = UndefinedVariable Token String | NotAFunction Expr String deriving Show
+data RuntimeError = UndefinedVariable String Int | NotAFunction Expr String deriving Show
 
 data InternalError = TypecheckingFailed deriving Show
 
@@ -51,8 +50,8 @@ displayFullLine line source message =
 displayLineAndMessage :: Int -> String -> String
 displayLineAndMessage = flip displayFullLine ""
 
-undefinedVar :: Token -> RuntimeError 
-undefinedVar token = UndefinedVariable token $ "Undefined variable: " ++ display token
+undefinedVar :: String -> Int -> RuntimeError 
+undefinedVar name = UndefinedVariable name 
 
 notAFunction :: Expr -> RuntimeError
 notAFunction = flip NotAFunction "Not a function"
@@ -71,8 +70,8 @@ instance Display ParseError where
   display Eof = "End of file"
 
 instance Display RuntimeError where
-  display (UndefinedVariable token message) = 
-    message ++ "\n" ++ displayLine (line token) ++ ". " ++ display token 
+  display (UndefinedVariable name line) = 
+    displayLine line ++ ". " ++ "Undefined variable: " ++ name
   display (NotAFunction expr message) = 
     message ++ "\n" ++ display expr ++ ". " 
 

@@ -3,13 +3,25 @@ module Mascheya.Core.Parser.Primitives where
 import Prelude hiding (pred, fail, repeat)
 
 import Mascheya.Core.Parser.Core 
-import Mascheya.Core.Result (ParseError (Expected, Eof), parseError)
+import Mascheya.Core.Result (ParseError (Expected), parseError)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Control.Applicative ((<|>))
 import Data.Char
-import qualified Mascheya.Core.Result as Result
 import Data.Either (isRight)
 import Data.List (find)
+
+-- | Parser for the function and/or variable identifier.
+-- It must start with either a lower case letter or an underscore. 
+-- The rest of the characters can be letters (lower or upper), digits,
+-- underscores and single quotes.
+functionId :: Parser (String, Int)
+functionId = combine <$> (track $ validHead <&> opt validTail)
+  where
+    validHead = lower <|> underscore
+    validTail = repeat $ letter <|> digit <|> underscore <|> singleQuote
+
+    combine ((h, Nothing), l) = ([h], l)
+    combine ((h, Just t), l) = (h : t, l)
 
 int :: Parser String
 int = repeat digit
@@ -45,13 +57,6 @@ true = str Lexemes.true
 
 false :: Parser String
 false = str Lexemes.false
-
-repeat :: Parser a -> Parser [a]
-repeat pa = pa >>= \a -> Parser {
-  run = \state -> case run (repeat pa) state of
-    Left _ -> Result.succeed ([a], state)
-    Right (as, rest) -> Result.succeed (a : as, rest)
-}
 
 str :: String -> Parser String
 str src = strExpect src src
@@ -116,18 +121,8 @@ asciiEsc = Parser $ \state@(State _ line') -> maybe
 caretControl :: Parser Char
 caretControl = upper <|> satisfyExpect (`elem` "[]\\^_") "caret control"
 
-word :: Parser String
-word = nonEmpty <|> return ""
-  where 
-    nonEmpty = (\(x, xs) -> x : xs) <$> letter <&> word
+underscore :: Parser Char
+underscore = char Lexemes.underscore
 
-item :: Parser Char
-item = Parser $ \(State inp line') -> case inp of
-  [] -> parseError Eof line'
-  (x : xs) -> Result.succeed (x, State xs (if x == '\n' || x == '\r' then line' + 1 else line'))
-
-satisfyExpect :: (Char -> Bool) -> String -> Parser Char
-satisfyExpect p e = satisfy p $ Expected e
-
-satisfy :: (Char -> Bool) -> ParseError -> Parser Char
-satisfy p e = track item >>= \(x, l) -> if p x then return x else fail e l
+singleQuote :: Parser Char
+singleQuote = char Lexemes.singleQuote

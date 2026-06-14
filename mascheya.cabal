@@ -26,7 +26,6 @@ library
       Mascheya.Core.Parser.Primitives
       Mascheya.Core.Repl
       Mascheya.Core.Result
-      Mascheya.Core.Token
       Mascheya.Core.Types
   other-modules:
       Paths_mascheya

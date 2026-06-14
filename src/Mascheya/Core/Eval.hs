@@ -8,17 +8,16 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT) )
-import Mascheya.Core.Token (Token(lexeme))
 import Data.STRef (newSTRef, writeSTRef, readSTRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
 eval :: Expr -> VEnv s -> Out s
-eval (VarExpr (Var token)) = maybe error' force . Env.lookup (lexeme token)
+eval (VarExpr (CVar name line')) = maybe error' force . Env.lookup name
   where 
-    error' = Result.failT $ RuntimeError $ Result.undefinedVar token
-eval (LambdaExpr (Lambda (Var token) body')) = 
-  Result.succeedT . FunctionVal . Function (lexeme token) body'
+    error' = Result.failT $ RuntimeError $ Result.undefinedVar name line'
+eval (LambdaExpr (Lambda (CVar name _) body')) = 
+  Result.succeedT . FunctionVal . Function name body'
 eval (AppExpr (App func arg')) = \env -> eval func env >>= flip handleFuncVal env 
   where 
     handleFuncVal (FunctionVal closure@(Function param' _ funcEnv)) = \callerEnv -> do

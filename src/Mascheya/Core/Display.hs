@@ -1,4 +1,5 @@
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Mascheya.Core.Display where
 
@@ -17,9 +18,12 @@ instance Display Float
 instance Display Double
 instance Display Bool
 
-instance (Display a) => Display (NonEmpty a) where
+instance Display a => Display (NonEmpty a) where
   display = intercalate "\n" . fmap display . toList
 
 instance (Display a, Display b) => Display (Either a b) where
   display (Left a) = display a
   display (Right b) = display b
+
+instance Display [Char] where
+  display = intercalate "" . map display 

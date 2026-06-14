@@ -92,3 +92,6 @@ true = "True"
 
 false :: String
 false = "False"
+
+underscore :: Char
+underscore = '_'

@@ -2,13 +2,12 @@ module Mascheya.Core.Ast.Core where
 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Display (Display(display))
-import Mascheya.Core.Token (Token)
 
-data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const 
+data Expr = VarExpr CVar | LambdaExpr Lambda | ConstExpr Const 
   | AppExpr App | BuiltinFuncExpr BuiltinFunc Int
   deriving Show
 
-newtype Var = Var Token deriving (Show, Eq)
+data CVar = CVar { varName :: String, line :: Int } deriving (Show, Eq)
 
 data Const = NumConst Numeric | CharConst CChar | BoolConst CBool deriving Show
 
@@ -18,7 +17,7 @@ data CChar = CChar Char deriving Show
 
 data CBool = CTrue | CFalse deriving Show
 
-data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
+data Lambda = Lambda { param :: CVar, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
 
 data BuiltinFunc = ArithFunc Arith | IfFunc If | ListFunc CList
@@ -30,10 +29,10 @@ data ArithKind = Plus | Minus | Times | Divide | Modulo deriving Show
 data CList = Cons Expr Expr | Nil deriving Show
 data If = If Expr Expr Expr deriving Show
 
-newVar :: Token -> Expr
-newVar = VarExpr . Var
+newVar :: String -> Int -> Expr
+newVar name = VarExpr . CVar name
 
-newLambda :: Var -> Expr -> Expr
+newLambda :: CVar -> Expr -> Expr
 newLambda param' = LambdaExpr . Lambda param'
 
 newApp :: Expr -> Expr -> Expr
@@ -79,8 +78,8 @@ instance Display Expr where
         ++ display Lexemes.space ++ display ifFalse
       display' (ListFunc clist) = display clist
               
-instance Display Var where
-  display (Var token) = display token
+instance Display CVar where
+  display (CVar name _) = display name
 
 instance Display CList where
   display Nil = display Lexemes.openSquareBracket ++ display Lexemes.closeSquareBracket

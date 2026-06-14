@@ -2,9 +2,17 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>))
 import Mascheya.Core.Parser.Primitives 
+
+sExpr :: Parser Expr
+sExpr = variable <|> literal
+  where 
+    literal = LiteralExpr <$> sLiteral
+    variable = VarExpr <$> sVar
+
+sVar :: Parser SVar
+sVar = (\(name, line') -> SVar name line') <$> functionId
 
 sLiteral :: Parser Literal
 sLiteral = numLit <|> charLit <|> boolLit 
@@ -30,8 +38,8 @@ sFloat :: Parser SFloat
 sFloat = parseMap SFloat float
 
 sChar :: Parser SChar
-sChar = (\((_, content), _) -> SChar content) <$> char Lexemes.singleQuote 
-  <&> (escaped <|> unescaped) <&> char Lexemes.singleQuote
+sChar = (\((_, content), _) -> SChar content) <$> singleQuote 
+  <&> (escaped <|> unescaped) <&> singleQuote
 
 sBool :: Parser SBool
 sBool = sTrue <|> sFalse

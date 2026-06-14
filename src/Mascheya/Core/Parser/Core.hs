@@ -3,24 +3,49 @@
 
 module Mascheya.Core.Parser.Core where
 
-import Mascheya.Core.Result (Result, ParseError (Eof), parseError)
+import Mascheya.Core.Result (Result, ParseError (Eof, Expected), parseError)
 import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
-import Prelude hiding (fail)
+import Prelude hiding (repeat, fail)
 
 data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
+
+repeat :: Parser a -> Parser [a]
+repeat pa = pa >>= \a -> Parser {
+  run = \state -> case run (repeat pa) state of
+    Left _ -> Result.succeed ([a], state)
+    Right (as, rest) -> Result.succeed (a : as, rest)
+}
 
 fail :: ParseError -> Int -> Parser a
 fail err = Parser . const . parseError err
 
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
-parseMap f = ((f . read) <$> ) 
+parseMap f = fmap (f . read)
 
 track :: Parser a -> Parser (a, Int)
 track p = p >>= \a -> Parser {
   run = \inp@(State _ line') -> Result.succeed ((a, line'), inp)
 }
+
+opt :: Parser a -> Parser (Maybe a)
+opt p = Parser {
+  run = \state -> Result.succeed $ case run p state of
+    Left _ -> (Nothing, state)
+    Right (val, newState) -> (Just val, newState) 
+}
+
+item :: Parser Char
+item = Parser $ \(State inp line') -> case inp of
+  [] -> parseError Eof line'
+  (x : xs) -> Result.succeed (x, State xs (if x == '\n' || x == '\r' then line' + 1 else line'))
+
+satisfyExpect :: (Char -> Bool) -> String -> Parser Char
+satisfyExpect p e = satisfy p $ Expected e
+
+satisfy :: (Char -> Bool) -> ParseError -> Parser Char
+satisfy p e = track item >>= \(x, l) -> if p x then return x else fail e l
 
 (<&>) :: Parser a -> Parser b -> Parser (a, b)
 (<&>) p q = do
