@@ -4,10 +4,14 @@ import Mascheya.Core.Ast.Source
 import Control.Applicative ((<|>))
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>))
-import Mascheya.Core.Parser.Primitives (int, double, float, unescaped, char, escaped)
+import Mascheya.Core.Parser.Primitives 
 
 sLiteral :: Parser Literal
-sLiteral = NumLit <$> sNum <|> CharLit <$> sChar
+sLiteral = numLit <|> charLit <|> boolLit 
+  where
+    numLit = NumLit <$> sNum
+    charLit = CharLit <$> sChar
+    boolLit = BoolLit <$> sBool
 
 sNum :: Parser SNum
 sNum = floatLit <|> doubleLit <|> intLit
@@ -28,3 +32,9 @@ sFloat = parseMap SFloat float
 sChar :: Parser SChar
 sChar = (\((_, content), _) -> SChar content) <$> char Lexemes.singleQuote 
   <&> (escaped <|> unescaped) <&> char Lexemes.singleQuote
+
+sBool :: Parser SBool
+sBool = sTrue <|> sFalse
+  where
+    sTrue = (const STrue) <$> true
+    sFalse = (const SFalse) <$> false

@@ -10,11 +10,13 @@ data Expr = VarExpr Var | LambdaExpr Lambda | ConstExpr Const
 
 newtype Var = Var Token deriving (Show, Eq)
 
-data Const = NumConst Numeric | CharConst CChar deriving Show
+data Const = NumConst Numeric | CharConst CChar | BoolConst CBool deriving Show
 
 data Numeric = CInt Int | CFloat Float | CDouble Double deriving Show
 
 data CChar = CChar Char deriving Show
+
+data CBool = CTrue | CFalse deriving Show
 
 data Lambda = Lambda { param :: Var, body :: Expr } deriving Show
 data App = App { callable :: Expr, arg :: Expr } deriving Show
@@ -61,6 +63,7 @@ instance Display Expr where
         CFloat float -> display float
         CDouble double -> display double
       display' (CharConst (CChar char')) = display char'
+      display' (BoolConst bool) = display bool
   display (AppExpr (App func arg')) = display func ++ " " ++ display arg'
   display (BuiltinFuncExpr builtin _) = display' builtin
     where 
@@ -83,3 +86,7 @@ instance Display CList where
   display Nil = display Lexemes.openSquareBracket ++ display Lexemes.closeSquareBracket
   display (Cons h t) = display h ++ display Lexemes.space 
     ++ Lexemes.cons ++ display Lexemes.space ++ display t
+
+instance Display CBool where
+  display CTrue = display True
+  display CFalse = display False

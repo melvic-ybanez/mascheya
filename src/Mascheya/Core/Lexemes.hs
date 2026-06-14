@@ -86,3 +86,9 @@ singleQuote = '\''
 
 doubleQuote :: Char
 doubleQuote = '\"'
+
+true :: String
+true = "True"
+
+false :: String
+false = "False"

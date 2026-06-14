@@ -13,3 +13,5 @@ translateExpr (LiteralExpr lit) = succeed $ ConstExpr $ case lit of
     FloatLit (SFloat float) -> CFloat float
     DoubleLit (SDouble double) -> CDouble double
   CharLit (SChar ch) -> CharConst $ CChar ch
+  BoolLit STrue -> BoolConst CTrue 
+  BoolLit SFalse -> BoolConst CFalse

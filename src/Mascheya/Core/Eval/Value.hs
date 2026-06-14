@@ -10,7 +10,11 @@ import qualified Mascheya.Core.Lexemes as Lexemes
 
 type VEnv s = Env (Thunk s)
 
-data Value s = ThunkVal (Thunk s) | FunctionVal (Function s) | ConstVal Const | ListVal (List s) | Bottom
+data Value s = ThunkVal (Thunk s) 
+  | FunctionVal (Function s) 
+  | ConstVal Const 
+  | ListVal (List s) 
+  | Bottom
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
 

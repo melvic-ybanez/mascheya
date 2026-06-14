@@ -40,6 +40,12 @@ escaped = track escapedPair >>= unescape
     singleEsc' = (: []) <$> singleEsc
     caretControl' = (\(c, d) -> [c, d]) <$> char '^' <&> caretControl
 
+true :: Parser String
+true = str Lexemes.true
+
+false :: Parser String
+false = str Lexemes.false
+
 repeat :: Parser a -> Parser [a]
 repeat pa = pa >>= \a -> Parser {
   run = \state -> case run (repeat pa) state of

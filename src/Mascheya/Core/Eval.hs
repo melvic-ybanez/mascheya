@@ -72,6 +72,8 @@ eval (ConstExpr const') = constSucceedT $ ConstVal $ eval' const'
       CFloat float -> FloatVal float
       CDouble double -> DoubleVal double
     eval' (CharConst (CChar char)) = CharVal char
+    eval' (BoolConst CTrue) = BoolVal True
+    eval' (BoolConst CFalse) = BoolVal False
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState
