@@ -24,6 +24,3 @@ instance Display a => Display (NonEmpty a) where
 instance (Display a, Display b) => Display (Either a b) where
   display (Left a) = display a
   display (Right b) = display b
-
-instance Display [Char] where
-  display = intercalate "" . map display 

@@ -3,7 +3,7 @@ module Mascheya.Core.Parser.Primitives where
 import Prelude hiding (pred, fail, repeat)
 
 import Mascheya.Core.Parser.Core 
-import Mascheya.Core.Result (ParseError (Expected), parseError)
+import Mascheya.Core.Result (ParseError (Expected), parseError, Loc (Loc))
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Control.Applicative ((<|>))
 import Data.Char
@@ -109,7 +109,7 @@ singleEsc = satisfyExpect (`elem` "'\"\\nrtvb") "single escapeable character"
 
 asciiEsc :: Parser String
 asciiEsc = Parser $ \state@(State _ line') -> maybe
-  (parseError (Expected "ascii control code") line') id 
+  (parseError (Expected "ascii control code") $ Loc line') id 
   $ find isRight 
   $ map (flip parseCode state) controlCodes
   where

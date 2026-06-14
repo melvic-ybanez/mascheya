@@ -3,7 +3,7 @@
 
 module Mascheya.Core.Parser.Core where
 
-import Mascheya.Core.Result (Result, ParseError (Eof, Expected), parseError)
+import Mascheya.Core.Result (Result, ParseError (Eof, Expected), parseError, Loc (Loc))
 import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
 import Prelude hiding (repeat, fail)
@@ -19,7 +19,7 @@ repeat pa = pa >>= \a -> Parser {
 }
 
 fail :: ParseError -> Int -> Parser a
-fail err = Parser . const . parseError err
+fail err = Parser . const . parseError err . Loc
 
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
 parseMap f = fmap (f . read)
@@ -38,7 +38,7 @@ opt p = Parser {
 
 item :: Parser Char
 item = Parser $ \(State inp line') -> case inp of
-  [] -> parseError Eof line'
+  [] -> parseError Eof $ Loc line'
   (x : xs) -> Result.succeed (x, State xs (if x == '\n' || x == '\r' then line' + 1 else line'))
 
 satisfyExpect :: (Char -> Bool) -> String -> Parser Char

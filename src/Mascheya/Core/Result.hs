@@ -6,13 +6,22 @@ module Mascheya.Core.Result where
 import Data.List.NonEmpty
 import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
-import Mascheya.Core.Ast.Core (Expr)
 import Control.Monad.Except (ExceptT, MonadError (throwError))
-import Data.List (intercalate)
 
 type Result = Either FailureNel 
 type ResultT = ExceptT FailureNel 
 type FailureNel = NonEmpty Failure
+
+newtype Loc = Loc { line :: Int } deriving (Show, Eq)
+
+data Failure = ParseError ParseError Loc | RuntimeError RuntimeError Loc
+  | InternalError InternalError deriving Show
+
+data ParseError = Invalid String String | Expected String | Eof deriving Show
+
+data RuntimeError = UndefinedVar String | NotAFunction String deriving Show
+
+data InternalError = TypecheckingFailed deriving Show
 
 succeed :: a -> Result a
 succeed = Right 
@@ -29,41 +38,16 @@ failAll = Left
 failT :: Monad m => Failure -> ResultT m a
 failT = throwError . singleton
 
-data Failure = ParseError ParseError Int | RuntimeError RuntimeError 
-  | InternalError InternalError deriving Show
-
-data ParseError = Invalid String String | Expected String | Eof deriving Show
-
-data RuntimeError = UndefinedVariable String Int | NotAFunction Expr String deriving Show
-
-data InternalError = TypecheckingFailed deriving Show
-
-parseError :: ParseError -> Int -> Result a
+parseError :: ParseError -> Loc -> Result a
 parseError error = fail . ParseError error
 
-displayLine :: Int -> String
-displayLine line = "[line " ++ display line ++ "]"
-
-displayFullLine :: Int -> String -> String -> String
-displayFullLine line source message = 
-  displayLine line ++ " Error " ++ source ++ ": " ++ message
-
-displayLineAndMessage :: Int -> String -> String
-displayLineAndMessage = flip displayFullLine ""
-
-undefinedVar :: String -> Int -> RuntimeError 
-undefinedVar name = UndefinedVariable name 
-
-notAFunction :: Expr -> RuntimeError
-notAFunction = flip NotAFunction "Not a function"
-
-tag :: String -> String
-tag = (++ "]") . ("[" ++)
+formatMsgWithLoc :: String -> Loc -> String
+formatMsgWithLoc msg loc = msg ++ " at " ++ display loc ++ ". "
 
 instance Display Failure where
-  display (ParseError error line) = "Parse Error at line " ++ show line ++ ". " ++ display error
-  display (RuntimeError error) = tag "Runtime Error" ++ " " ++ display error
-  display (InternalError error) = tag "Internal Error" ++ " " ++ display error
+  display (ParseError error loc) = formatMsgWithLoc "Parser Error" loc ++ display error
+  display (RuntimeError error loc) = formatMsgWithLoc "Runtime Error" loc ++ display error
+  display (InternalError error) = "Internal Error" ++ " " ++ display error  -- TODO: Format this too
 
 instance Display ParseError where
   display (Invalid expected source) = "Invalid " ++ expected ++ ": " ++ source
@@ -71,10 +55,11 @@ instance Display ParseError where
   display Eof = "End of file"
 
 instance Display RuntimeError where
-  display (UndefinedVariable name line) = 
-    displayLine line ++ ". " ++ "Undefined variable: " ++ name
-  display (NotAFunction expr message) = 
-    message ++ "\n" ++ display expr ++ ". " 
+  display (UndefinedVar name) = "Undefined variable: " ++ name
+  display (NotAFunction source) = "Not a function: " ++ source
 
 instance Display InternalError where
   display TypecheckingFailed = "Typechecker failed to capture a type error"
+
+instance Display Loc where
+  display (Loc line') = "line " ++ display line'

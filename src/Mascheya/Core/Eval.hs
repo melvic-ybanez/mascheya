@@ -13,18 +13,18 @@ import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
 eval :: Expr -> VEnv s -> Out s
-eval (VarExpr (CVar name line')) = maybe error' force . Env.lookup name
+eval (VarExpr (CVar name loc')) = maybe error' force . Env.lookup name
   where 
-    error' = Result.failT $ RuntimeError $ Result.undefinedVar name line'
+    error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
 eval (LambdaExpr (Lambda (CVar name _) body')) = 
   Result.succeedT . FunctionVal . Function name body'
-eval (AppExpr (App func arg')) = \env -> eval func env >>= flip handleFuncVal env 
+eval (AppExpr (App func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
   where 
     handleFuncVal (FunctionVal closure@(Function param' _ funcEnv)) = \callerEnv -> do
       argThunk <- lift $ newSTRef $ Delayed arg' callerEnv
       extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
       eval (body closure) extendedEnv
-    handleFuncVal _ = constFailT $ RuntimeError $ notAFunction func
+    handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
 eval (BuiltinFuncExpr builtin _) = eval' builtin
   where 
     eval' (ArithFunc anyArith) = eval'' anyArith

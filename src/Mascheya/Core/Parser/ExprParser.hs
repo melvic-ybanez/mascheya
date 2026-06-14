@@ -4,6 +4,7 @@ import Mascheya.Core.Ast.Source
 import Control.Applicative ((<|>))
 import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>))
 import Mascheya.Core.Parser.Primitives 
+import Mascheya.Core.Result (Loc(Loc))
 
 sExpr :: Parser Expr
 sExpr = variable <|> literal
@@ -12,7 +13,7 @@ sExpr = variable <|> literal
     variable = VarExpr <$> sVar
 
 sVar :: Parser SVar
-sVar = (\(name, line') -> SVar name line') <$> functionId
+sVar = (\(name, line') -> SVar name $ Loc line') <$> functionId
 
 sLiteral :: Parser Literal
 sLiteral = numLit <|> charLit <|> boolLit 
