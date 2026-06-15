@@ -1,46 +1,46 @@
 module Mascheya.Core.Ast.Core where
 import Mascheya.Core.Result (Loc)
 
-data Expr = VarExpr CVar | LambdaExpr Lambda | ConstExpr Const 
-  | AppExpr App | BuiltinFuncExpr BuiltinFunc Int
+data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
+  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc Int
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
 
-data Const = NumConst Numeric | CharConst CChar | BoolConst CBool deriving Show
+data CConst = CNumConst CNumeric | CCharConst CChar | CBoolConst CBool deriving Show
 
-data Numeric = CInt Int | CFloat Float | CDouble Double deriving Show
+data CNumeric = CInt Int | CFloat Float | CDouble Double deriving Show
 
 data CChar = CChar Char deriving Show
 
 data CBool = CTrue | CFalse deriving Show
 
-data Lambda = Lambda { param :: CVar, body :: Expr } deriving Show
-data App = App { callable :: Expr, arg :: Expr, source :: String, appLoc :: Loc } deriving Show
+data CLambda = CLambda { param :: CVar, body :: CExpr } deriving Show
+data CApp = CApp { callable :: CExpr, arg :: CExpr, source :: String, appLoc :: Loc } deriving Show
 
-data BuiltinFunc = ArithFunc Arith | IfFunc If | ListFunc CList
+data CBuiltinFunc = CArithFunc CArith | CIfFunc CIf | CListFunc CList
   deriving Show
 
-data Arith = Arith ArithKind Expr Expr deriving Show
+data CArith = CArith CArithKind CExpr CExpr deriving Show
 
-data ArithKind = Plus | Minus | Times | Divide | Modulo deriving Show
-data CList = Cons Expr Expr | Nil deriving Show
-data If = If Expr Expr Expr deriving Show
+data CArithKind = CPlus | CMinus | CTimes | CDivide | CModulo deriving Show
+data CList = CCons CExpr CExpr | CNil deriving Show
+data CIf = CIf CExpr CExpr CExpr deriving Show
 
-newVar :: String -> Loc -> Expr
-newVar name = VarExpr . CVar name
+newVar :: String -> Loc -> CExpr
+newVar name = CVarExpr . CVar name
 
-newLambda :: CVar -> Expr -> Expr
-newLambda param' = LambdaExpr . Lambda param'
+newLambda :: CVar -> CExpr -> CExpr
+newLambda param' = CLambdaExpr . CLambda param'
 
-newInt :: Int -> Expr
+newInt :: Int -> CExpr
 newInt = newNumeric CInt 
 
-newFloat :: Float -> Expr
+newFloat :: Float -> CExpr
 newFloat = newNumeric CFloat
 
-newDouble :: Double -> Expr
+newDouble :: Double -> CExpr
 newDouble = newNumeric CDouble
 
-newNumeric :: (a -> Numeric) -> a -> Expr
-newNumeric f = ConstExpr . NumConst . f
+newNumeric :: (a -> CNumeric) -> a -> CExpr
+newNumeric f = CConstExpr . CNumConst . f

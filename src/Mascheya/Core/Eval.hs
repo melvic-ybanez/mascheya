@@ -12,29 +12,29 @@ import Data.STRef (newSTRef, writeSTRef, readSTRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
-eval :: Expr -> VEnv s -> Out s
-eval (VarExpr (CVar name loc')) = maybe error' force . Env.lookup name
+eval :: CExpr -> VEnv s -> Out s
+eval (CVarExpr (CVar name loc')) = maybe error' force . Env.lookup name
   where 
     error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
-eval (LambdaExpr (Lambda (CVar name _) body')) = 
+eval (CLambdaExpr (CLambda (CVar name _) body')) = 
   Result.succeedT . FunctionVal . Function name body'
-eval (AppExpr (App func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
+eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
   where 
     handleFuncVal (FunctionVal closure@(Function param' _ funcEnv)) = \callerEnv -> do
       argThunk <- lift $ newSTRef $ Delayed arg' callerEnv
       extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
-eval (BuiltinFuncExpr builtin _) = eval' builtin
+eval (CBuiltinFuncExpr builtin _) = eval' builtin
   where 
-    eval' (ArithFunc anyArith) = eval'' anyArith
+    eval' (CArithFunc anyArith) = eval'' anyArith
       where 
-        eval'' (Arith op a b) = case op of
-          Plus -> evalArith (+) (+)
-          Minus -> evalArith (-) (-)
-          Times -> evalArith (*) (*)
-          Divide -> evalArith div (/)
-          Modulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
+        eval'' (CArith op a b) = case op of
+          CPlus -> evalArith (+) (+)
+          CMinus -> evalArith (-) (-)
+          CTimes -> evalArith (*) (*)
+          CDivide -> evalArith div (/)
+          CModulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
             ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
             (_, _) -> constTypeErrorT
 
@@ -53,26 +53,26 @@ eval (BuiltinFuncExpr builtin _) = eval' builtin
               (Bottom, _) -> returnBottom
               (_, Bottom) -> returnBottom
               (_, _) -> constTypeErrorT
-    eval' (IfFunc (If cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
+    eval' (CIfFunc (CIf cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
       where 
         handle (ConstVal (BoolVal True)) = eval ifTrue
         handle (ConstVal (BoolVal False)) = eval ifFalse
         handle Bottom = returnBottom
         handle _ = constTypeErrorT
-    eval' (ListFunc Nil) = constSucceedT $ ListVal NilVal
-    eval' (ListFunc (Cons h t)) = \env -> do
+    eval' (CListFunc CNil) = constSucceedT $ ListVal NilVal
+    eval' (CListFunc (CCons h t)) = \env -> do
       dh <- lift $ newSTRef $ Delayed h env
       dt <- lift $ newSTRef $ Delayed t env
       return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
-eval (ConstExpr const') = constSucceedT $ ConstVal $ eval' const'
+eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
   where 
-    eval' (NumConst num) = case num of
+    eval' (CNumConst num) = case num of
       CInt int -> IntVal int
       CFloat float -> FloatVal float
       CDouble double -> DoubleVal double
-    eval' (CharConst (CChar char)) = CharVal char
-    eval' (BoolConst CTrue) = BoolVal True
-    eval' (BoolConst CFalse) = BoolVal False
+    eval' (CCharConst (CChar char)) = CharVal char
+    eval' (CBoolConst CTrue) = BoolVal True
+    eval' (CBoolConst CFalse) = BoolVal False
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState

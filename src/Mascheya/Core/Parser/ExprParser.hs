@@ -2,32 +2,41 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>))
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat)
 import Mascheya.Core.Parser.Primitives 
 import Mascheya.Core.Result (Loc(Loc))
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Prelude hiding (repeat)
+import Data.List.NonEmpty (NonEmpty, fromList)
 
-sExpr :: Parser Expr
+sExpr :: Parser SExpr
 sExpr = variable <|> literal
   where 
-    literal = LiteralExpr <$> sLiteral
-    variable = VarExpr <$> sVar
+    literal = SLitExpr <$> sLit
+    variable = SVarExpr <$> sVar
+
+sApp :: Parser (SExpr, NonEmpty SExpr)
+sApp = sExpr <&> args'
+  where 
+    args' = (\(h, t) -> fromList $ h : t) <$> arg <&> (repeat arg)
+    arg = snd <$> char Lexemes.space <&> sExpr
 
 sVar :: Parser SVar
 sVar = (\(name, line') -> SVar name $ Loc line') <$> functionId
 
-sLiteral :: Parser Literal
-sLiteral = numLit <|> charLit <|> boolLit 
+sLit :: Parser SLit
+sLit = numLit <|> charLit <|> boolLit 
   where
-    numLit = NumLit <$> sNum
-    charLit = CharLit <$> sChar
-    boolLit = BoolLit <$> sBool
+    numLit = SNumLit <$> sNum
+    charLit = SCharLit <$> sChar
+    boolLit = SBoolLit <$> sBool
 
 sNum :: Parser SNum
 sNum = floatLit <|> doubleLit <|> intLit
   where
-    intLit = IntLit <$> sInt
-    doubleLit = DoubleLit <$> sDouble
-    floatLit = FloatLit <$> sFloat
+    intLit = SIntNum <$> sInt
+    doubleLit = SDoubleNum <$> sDouble
+    floatLit = SFloatNum <$> sFloat
 
 sInt :: Parser SInt
 sInt = parseMap SInt int

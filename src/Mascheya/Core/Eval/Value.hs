@@ -1,12 +1,12 @@
 module Mascheya.Core.Eval.Value where
 
 import Mascheya.Core.Result (ResultT)
-import Mascheya.Core.Ast.Core (Expr)
 import Mascheya.Core.Eval.Env (Env)
 import Mascheya.Core.Display (Display(display))
 import Data.STRef (STRef)
 import Control.Monad.ST
 import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Ast.Core (CExpr)
 
 type VEnv s = Env (Thunk s)
 
@@ -18,9 +18,9 @@ data Value s = ThunkVal (Thunk s)
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
 
-data ThunkState s = Delayed Expr (VEnv s) | Ready (Value s)
+data ThunkState s = Delayed CExpr (VEnv s) | Ready (Value s)
 
-data Function s = Function { param :: String, body :: Expr, closureEnv :: VEnv s }
+data Function s = Function { param :: String, body :: CExpr, closureEnv :: VEnv s }
 
 data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | BoolVal Bool 
 
@@ -30,7 +30,7 @@ type Out s = ResultT (ST s) (Value s)
 
 data PureValue = PureFuncVal PureFunction | PureConstVal Const | PureListVal PureList | PureBottom
 
-data PureFunction = PureFunction String Expr  
+data PureFunction = PureFunction String CExpr  
 
 data PureList = PureConsVal PureValue PureList | PureNilVal 
 
