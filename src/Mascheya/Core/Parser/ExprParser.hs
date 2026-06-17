@@ -2,24 +2,32 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat)
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track)
 import Mascheya.Core.Parser.Primitives 
 import Mascheya.Core.Result (Loc(Loc))
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
-import Data.List.NonEmpty (NonEmpty, fromList)
+import Data.List.NonEmpty (fromList)
 
 sExpr :: Parser SExpr
-sExpr = variable <|> literal
+sExpr = expr <|> inParens expr
   where 
+    expr = app <|> nonApp
+    app = SAppExpr <$> sApp
+
+sApp :: Parser SApp
+sApp = (\((f, a), l) -> SApp f a $ Loc l) <$> (track $ callable' <&> args')
+  where 
+    callable' = nonApp <|> (inParens $ SAppExpr <$> sApp)
+    args' = fromList <$> repeat arg
+    arg = snd <$> char Lexemes.space <&> sExpr
+
+nonApp :: Parser SExpr
+nonApp = nonApp' <|> inParens nonApp'
+  where 
+    nonApp' = variable <|> literal
     literal = SLitExpr <$> sLit
     variable = SVarExpr <$> sVar
-
-sApp :: Parser (SExpr, NonEmpty SExpr)
-sApp = sExpr <&> args'
-  where 
-    args' = (\(h, t) -> fromList $ h : t) <$> arg <&> (repeat arg)
-    arg = snd <$> char Lexemes.space <&> sExpr
 
 sVar :: Parser SVar
 sVar = (\(name, line') -> SVar name $ Loc line') <$> functionId

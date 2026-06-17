@@ -118,6 +118,12 @@ asciiEsc = Parser $ \state@(State _ line') -> maybe
       "HT", "LF", "VT", "FF", "CR", "SO","SI", "DLE", "DC1", "DC2", "DC3", "DC4", 
       "NAK", "SYN", "ETB", "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "DEL"]
 
+bracket :: Char -> Parser a -> Char -> Parser a
+bracket l p r = (\((_, a), _) -> a) <$> char l <&> p <&> char r
+
+inParens :: Parser a -> Parser a
+inParens p = bracket Lexemes.leftParen p Lexemes.rightParen
+
 caretControl :: Parser Char
 caretControl = upper <|> satisfyExpect (`elem` "[]\\^_") "caret control"
 
