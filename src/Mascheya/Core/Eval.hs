@@ -25,45 +25,42 @@ eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip h
       extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
-eval (CBuiltinFuncExpr builtin _) = eval' builtin
-  where 
-    eval' (CArithFunc anyArith) = eval'' anyArith
-      where 
-        eval'' (CArith op a b) = case op of
-          CPlus -> evalArith (+) (+)
-          CMinus -> evalArith (-) (-)
-          CTimes -> evalArith (*) (*)
-          CDivide -> evalArith div (/)
-          CModulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
-            ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
-            (_, _) -> constTypeErrorT
+eval (CBuiltinFuncExpr builtin) = case builtin of
+  CArithFunc (CArith op a b) -> case op of
+    CPlus -> evalArith (+) (+)
+    CMinus -> evalArith (-) (-)
+    CTimes -> evalArith (*) (*)
+    CDivide -> evalArith div (/)
+    CModulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
+      ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
+      (_, _) -> constTypeErrorT
 
-          where 
-            evalArithWith f = runReaderT $ do
-              aVal <- ReaderT $ eval a
-              bVal <- ReaderT $ eval b
-              ReaderT $ f aVal bVal
+    where 
+      evalArithWith f = runReaderT $ do
+        aVal <- ReaderT $ eval a
+        bVal <- ReaderT $ eval b
+        ReaderT $ f aVal bVal
 
-            evalArith :: (Int -> Int -> Int) -> 
-              (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
-            evalArith f g = evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
-              ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
-              ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
-              ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
-              (Bottom, _) -> returnBottom
-              (_, Bottom) -> returnBottom
-              (_, _) -> constTypeErrorT
-    eval' (CIfFunc (CIf cond ifTrue ifFalse)) = \env -> eval cond env >>= flip handle env 
-      where 
-        handle (ConstVal (BoolVal True)) = eval ifTrue
-        handle (ConstVal (BoolVal False)) = eval ifFalse
-        handle Bottom = returnBottom
-        handle _ = constTypeErrorT
-    eval' (CListFunc CNil) = constSucceedT $ ListVal NilVal
-    eval' (CListFunc (CCons h t)) = \env -> do
-      dh <- lift $ newSTRef $ Delayed h env
-      dt <- lift $ newSTRef $ Delayed t env
-      return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
+      evalArith :: (Int -> Int -> Int) -> 
+        (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
+      evalArith f g = evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
+        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
+        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
+        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
+        (Bottom, _) -> returnBottom
+        (_, Bottom) -> returnBottom
+        (_, _) -> constTypeErrorT
+  CIfFunc (CIf cond ifTrue ifFalse) -> \env -> eval cond env >>= flip handle env 
+    where 
+      handle (ConstVal (BoolVal True)) = eval ifTrue
+      handle (ConstVal (BoolVal False)) = eval ifFalse
+      handle Bottom = returnBottom
+      handle _ = constTypeErrorT
+  CListFunc CNil -> constSucceedT $ ListVal NilVal
+  CListFunc (CCons h t) -> \env -> do
+    dh <- lift $ newSTRef $ Delayed h env
+    dt <- lift $ newSTRef $ Delayed t env
+    return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
 eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
   where 
     eval' (CNumConst num) = case num of

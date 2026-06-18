@@ -24,5 +24,15 @@ translateExpr (SAppExpr (SApp callable' (h :| t) loc)) = do
   let init' = CAppExpr $ CApp cCallable cH (display callable') loc
   let mkCExpr acc expr = CAppExpr $ CApp acc expr (display callable') loc
   return $ foldl' mkCExpr init' rest 
-    
-    
+translateExpr (SBuiltinFuncExpr builtin) = case builtin of
+  SArithFunc (SArith sarithKind sexpr1 sexpr2) -> do
+    cexpr1 <- translateExpr sexpr1
+    cexpr2 <- translateExpr sexpr2
+    Result.succeed $ CBuiltinFuncExpr $ CArithFunc $ CArith carithKind cexpr1 cexpr2
+    where 
+      carithKind = case sarithKind of
+        SPlus -> CPlus
+        SMinus -> CMinus
+        STimes -> CTimes
+        SDivide -> CDivide
+        SModulo -> CModulo
