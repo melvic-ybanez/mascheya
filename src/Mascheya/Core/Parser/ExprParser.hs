@@ -3,8 +3,7 @@ module Mascheya.Core.Parser.ExprParser where
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
 import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, char)
-import Mascheya.Core.Parser.Primitives 
-import Mascheya.Core.Result (Loc(Loc))
+import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Data.List.NonEmpty (fromList)
@@ -12,24 +11,19 @@ import Data.List.NonEmpty (fromList)
 sExpr :: Parser SExpr
 sExpr = expr <|> inParens expr
   where 
-    expr = arith <|> app <|> nonApp
+    expr = app <|> nonApp <|> infix'
     app = SAppExpr <$> sApp
-    arith = SBuiltinFuncExpr . SArithFunc <$> sArith
+    infix' = SInfixExpr <$> sInfix
 
 sApp :: Parser SApp
-sApp = (\((f, a), l) -> SApp f a $ Loc l) <$> (track $ callable' <&> args')
+sApp = (\((f, a), l) -> SApp f a l) <$> (track $ callable' <&> args')
   where 
     callable' = nonApp <|> (inParens $ SAppExpr <$> sApp)
-    args' = fromList <$> repeat sArg
+    args' = fromList <$> repeat arg
+    arg = snd <$> char Lexemes.space <&> sExpr
 
-sArith :: Parser SArith
-sArith = toArith <$> sArithKind <&> args'
-  where
-    toArith (arithKind, (expr1, expr2)) = SArith arithKind expr1 expr2
-    args' = sArg <&> sArg
-
-sArg :: Parser SExpr
-sArg = snd <$> char Lexemes.space <&> sExpr
+sInfix :: Parser SInfix
+sInfix = (\((arg1, op), arg2) -> SInfix arg1 op arg2) <$> sExpr <&> symVar <&> sExpr
 
 nonApp :: Parser SExpr
 nonApp = nonApp' <|> inParens nonApp'
@@ -39,7 +33,10 @@ nonApp = nonApp' <|> inParens nonApp'
     variable = SVarExpr <$> sVar
 
 sVar :: Parser SVar
-sVar = (\(name, line') -> SVar name $ Loc line') <$> functionId
+sVar = (uncurry SVar) <$> functionId
+
+symVar :: Parser SVar
+symVar = (uncurry SVar) <$> symbolicFunc
 
 sLit :: Parser SLit
 sLit = numLit <|> charLit <|> boolLit 
@@ -73,21 +70,3 @@ sBool = sTrue <|> sFalse
   where
     sTrue = (const STrue) <$> true
     sFalse = (const SFalse) <$> false
-
-sArithKind :: Parser SArithKind
-sArithKind = sPlus <|> sMinus <|> sTimes <|> sDivide <|> sModulo
-
-sPlus :: Parser SArithKind
-sPlus = const SPlus <$> char Lexemes.plus 
-
-sMinus :: Parser SArithKind
-sMinus = const SMinus <$> char Lexemes.minus
-
-sTimes :: Parser SArithKind
-sTimes = const STimes <$> char Lexemes.times
-
-sDivide :: Parser SArithKind
-sDivide = const SDivide <$> char Lexemes.divide
-
-sModulo :: Parser SArithKind
-sModulo = const SModulo <$> char Lexemes.modulo

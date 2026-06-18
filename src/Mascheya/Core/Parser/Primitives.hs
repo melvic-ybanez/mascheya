@@ -14,7 +14,7 @@ import Data.List (find)
 -- It must start with either a lower case letter or an underscore. 
 -- The rest of the characters can be letters (lower or upper), digits,
 -- underscores and single quotes.
-functionId :: Parser (String, Int)
+functionId :: Parser (String, Loc)
 functionId = combine <$> (track $ validHead <&> opt validTail)
   where
     validHead = lower <|> underscore
@@ -22,6 +22,13 @@ functionId = combine <$> (track $ validHead <&> opt validTail)
 
     combine ((h, Nothing), l) = ([h], l)
     combine ((h, Just t), l) = (h : t, l)
+
+symbolicFunc :: Parser (String, Loc)
+symbolicFunc = track $ repeat $ satisfyExpect pred "function symbol character"
+  where
+    -- the hardcoded charcacters are based on the valid symbols in Scala and Haskell,
+    -- ordered in ascending order of precedence 
+    pred c = c `elem` "|^&<>=!:+-*/%#$?@\\~" || isSymbol c
 
 int :: Parser String
 int = repeat digit
@@ -42,9 +49,9 @@ escaped = track escapedPair >>= unescape
   where 
     escapedPair = codePoint <|> 
       (str [Lexemes.escapePrefix] <&> (caretControl' <|> singleEsc' <|> asciiEsc))
-    unescape ((prefix, val), line') = case readLitChar $ prefix ++ val of
+    unescape ((prefix, val), Loc line') = case readLitChar $ prefix ++ val of
       [(result, _)] -> return result
-      _ -> fail (Expected "escapeable character") line'
+      _ -> fail (Expected "escapeable character") $ Loc line'
     codePoint = digit' <|> octal' <|> hex'
     digit' = str [Lexemes.escapePrefix] <&> repeat digit
     octal' = str Lexemes.octalPrefix <&> repeat octal
@@ -83,7 +90,7 @@ symbol :: Parser Char
 symbol = satisfyExpect isSymbol "symbolic character"
 
 special :: Parser Char
-special = satisfyExpect (`elem` "(),;[]`{}") "special character"
+special = chooseCharExpect "(),;[]`{}" "special character"
 
 hex :: Parser Char
 hex = satisfyExpect isHexDigit "hexadecimal"
@@ -92,7 +99,7 @@ octal :: Parser Char
 octal = satisfyExpect isOctDigit "octal"
 
 singleEsc :: Parser Char
-singleEsc = satisfyExpect (`elem` "'\"\\nrtvb") "single escapeable character"
+singleEsc = chooseCharExpect "'\"\\nrtvb" "single escapeable character"
 
 asciiEsc :: Parser String
 asciiEsc = Parser $ \state@(State _ line') -> maybe
@@ -109,7 +116,7 @@ inParens :: Parser a -> Parser a
 inParens p = bracket Lexemes.leftParen p Lexemes.rightParen
 
 caretControl :: Parser Char
-caretControl = upper <|> satisfyExpect (`elem` "[]\\^_") "caret control"
+caretControl = upper <|> chooseCharExpect "[]\\^_" "caret control"
 
 underscore :: Parser Char
 underscore = char Lexemes.underscore

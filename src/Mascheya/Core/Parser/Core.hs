@@ -8,6 +8,7 @@ import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
 import Prelude hiding (repeat, fail)
 import Control.Monad (MonadPlus)
+import Data.List (intercalate)
 
 data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
@@ -19,15 +20,15 @@ repeat pa = pa >>= \a -> Parser {
     Right (as, rest) -> Result.succeed (a : as, rest)
 }
 
-fail :: ParseError -> Int -> Parser a
-fail err = Parser . const . parseError err . Loc
+fail :: ParseError -> Loc -> Parser a
+fail err = Parser . const . parseError err
 
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
 parseMap f = fmap (f . read)
 
-track :: Parser a -> Parser (a, Int)
+track :: Parser a -> Parser (a, Loc)
 track p = p >>= \a -> Parser {
-  run = \inp@(State _ line') -> Result.succeed ((a, line'), inp)
+  run = \inp@(State _ line') -> Result.succeed ((a, Loc line'), inp)
 }
 
 opt :: Parser a -> Parser (Maybe a)
@@ -52,6 +53,12 @@ char c = charExpect c [c]
 
 charExpect :: Char -> String -> Parser Char
 charExpect c = satisfyExpect (\a -> a == c) 
+
+chooseChar :: [Char] -> Parser Char
+chooseChar cs = chooseCharExpect cs $ "one of " ++ (intercalate ", " $ fmap (: []) cs)
+
+chooseCharExpect :: [Char] -> String -> Parser Char
+chooseCharExpect cs = satisfyExpect (`elem` cs) 
 
 item :: Parser Char
 item = Parser $ \(State inp line') -> case inp of
@@ -92,7 +99,7 @@ instance Monad Parser where
 
 instance Alternative Parser where  
   empty :: Parser a
-  empty = fail Eof 0
+  empty = fail Eof $ Loc 0
   
   (<|>) :: Parser a -> Parser a -> Parser a
   (<|>) (Parser runA) (Parser runB) = Parser {
