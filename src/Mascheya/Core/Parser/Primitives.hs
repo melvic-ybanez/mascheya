@@ -58,19 +58,6 @@ true = str Lexemes.true
 false :: Parser String
 false = str Lexemes.false
 
-str :: String -> Parser String
-str src = strExpect src src
-
-strExpect :: String -> String -> Parser String
-strExpect [] _ = return []
-strExpect (x : xs) err = (\(c, cs) -> c : cs) <$> charExpect x err <&> strExpect xs err
-
-char :: Char -> Parser Char
-char c = charExpect c [c]
-
-charExpect :: Char -> String -> Parser Char
-charExpect c = satisfyExpect (\a -> a == c) 
-
 digit :: Parser Char
 digit = satisfyExpect isDigit "digit"
 
@@ -117,9 +104,6 @@ asciiEsc = Parser $ \state@(State _ line') -> maybe
     controlCodes = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL", "BS", 
       "HT", "LF", "VT", "FF", "CR", "SO","SI", "DLE", "DC1", "DC2", "DC3", "DC4", 
       "NAK", "SYN", "ETB", "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "DEL"]
-
-bracket :: Char -> Parser a -> Char -> Parser a
-bracket l p r = (\((_, a), _) -> a) <$> char l <&> p <&> char r
 
 inParens :: Parser a -> Parser a
 inParens p = bracket Lexemes.leftParen p Lexemes.rightParen

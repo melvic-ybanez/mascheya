@@ -2,7 +2,7 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track)
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, char)
 import Mascheya.Core.Parser.Primitives 
 import Mascheya.Core.Result (Loc(Loc))
 import qualified Mascheya.Core.Lexemes as Lexemes

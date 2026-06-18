@@ -7,6 +7,7 @@ import Mascheya.Core.Result (Result, ParseError (Eof, Expected), parseError, Loc
 import Control.Applicative (Alternative (empty, (<|>)))
 import qualified Mascheya.Core.Result as Result
 import Prelude hiding (repeat, fail)
+import Control.Monad (MonadPlus)
 
 data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
@@ -35,6 +36,22 @@ opt p = Parser {
     Left _ -> (Nothing, state)
     Right (val, newState) -> (Just val, newState) 
 }
+
+bracket :: Char -> Parser a -> Char -> Parser a
+bracket l p r = (\((_, a), _) -> a) <$> char l <&> p <&> char r
+
+str :: String -> Parser String
+str src = strExpect src src
+
+strExpect :: String -> String -> Parser String
+strExpect [] _ = return []
+strExpect (x : xs) err = (\(c, cs) -> c : cs) <$> charExpect x err <&> strExpect xs err
+
+char :: Char -> Parser Char
+char c = charExpect c [c]
+
+charExpect :: Char -> String -> Parser Char
+charExpect c = satisfyExpect (\a -> a == c) 
 
 item :: Parser Char
 item = Parser $ \(State inp line') -> case inp of
@@ -85,3 +102,5 @@ instance Alternative Parser where
         right -> right
       right -> right 
   }
+
+instance MonadPlus Parser where
