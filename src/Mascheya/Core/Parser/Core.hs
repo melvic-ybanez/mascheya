@@ -9,15 +9,22 @@ import qualified Mascheya.Core.Result as Result
 import Prelude hiding (repeat, fail)
 import Control.Monad (MonadPlus)
 import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty ((:|)), (<|), toList)
 
 data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
 
-repeat :: Parser a -> Parser [a]
+repeat0 :: Parser a -> Parser [a]
+repeat0 p = opt (repeat p) >>= handle
+  where
+    handle Nothing = return []
+    handle (Just as) = return $ toList as
+
+repeat :: Parser a -> Parser (NonEmpty a)
 repeat pa = pa >>= \a -> Parser {
   run = \state -> case run (repeat pa) state of
-    Left _ -> Result.succeed ([a], state)
-    Right (as, rest) -> Result.succeed (a : as, rest)
+    Left _ -> Result.succeed (a :| [], state)
+    Right (as, rest) -> Result.succeed (a <| as, rest)
 }
 
 fail :: ParseError -> Loc -> Parser a
@@ -39,20 +46,20 @@ opt p = Parser {
 }
 
 bracket :: Char -> Parser a -> Char -> Parser a
-bracket l p r = (\((_, a), _) -> a) <$> char l <&> p <&> char r
+bracket l p r = (\((_, a), _) -> a) <$> matchChar l <&> p <&> matchChar r
 
-str :: String -> Parser String
-str src = strExpect src src
+matchStr :: String -> Parser String
+matchStr src = matchStrExpect src src
 
-strExpect :: String -> String -> Parser String
-strExpect [] _ = return []
-strExpect (x : xs) err = (\(c, cs) -> c : cs) <$> charExpect x err <&> strExpect xs err
+matchStrExpect :: String -> String -> Parser String
+matchStrExpect [] _ = return []
+matchStrExpect (x : xs) err = (\(c, cs) -> c : cs) <$> matchCharExpect x err <&> matchStrExpect xs err
 
-char :: Char -> Parser Char
-char c = charExpect c [c]
+matchChar :: Char -> Parser Char
+matchChar c = matchCharExpect c [c]
 
-charExpect :: Char -> String -> Parser Char
-charExpect c = satisfyExpect (\a -> a == c) 
+matchCharExpect :: Char -> String -> Parser Char
+matchCharExpect c = satisfyExpect (\a -> a == c) 
 
 chooseChar :: [Char] -> Parser Char
 chooseChar cs = chooseCharExpect cs $ "one of " ++ (intercalate ", " $ fmap (: []) cs)

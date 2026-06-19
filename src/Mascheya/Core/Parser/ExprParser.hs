@@ -2,71 +2,83 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, char)
-import Mascheya.Core.Parser.Primitives
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, repeat0, matchChar)
+import Mascheya.Core.Parser.Primitives 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
-import Data.List.NonEmpty (fromList)
+import Mascheya.Core.Result (Loc)
 
-sExpr :: Parser SExpr
-sExpr = expr <|> inParens expr
+expr :: Parser SExpr
+expr = expr' <|> inParens expr'
   where 
-    expr = app <|> nonApp <|> infix'
-    app = SAppExpr <$> sApp
-    infix' = SInfixExpr <$> sInfix
+    expr' = appExpr <|> arithExpr <|> factor
 
-sApp :: Parser SApp
-sApp = (\((f, a), l) -> SApp f a l) <$> (track $ callable' <&> args')
+appExpr :: Parser SExpr
+appExpr = (\((f, a), l) -> SAppExpr $ SApp f a l) <$> (track $ factor' <&> args')
   where 
-    callable' = nonApp <|> (inParens $ SAppExpr <$> sApp)
-    args' = fromList <$> repeat arg
-    arg = snd <$> char Lexemes.space <&> sExpr
+    factor' = factor <|> (inParens $ appExpr)
+    args' = repeat arg
+    arg = snd <$> matchChar Lexemes.space <&> factor'
 
-sInfix :: Parser SInfix
-sInfix = (\((arg1, op), arg2) -> SInfix arg1 op arg2) <$> sExpr <&> symVar <&> sExpr
-
-nonApp :: Parser SExpr
-nonApp = nonApp' <|> inParens nonApp'
-  where 
-    nonApp' = variable <|> literal
-    literal = SLitExpr <$> sLit
-    variable = SVarExpr <$> sVar
-
-sVar :: Parser SVar
-sVar = (uncurry SVar) <$> functionId
-
-symVar :: Parser SVar
-symVar = (uncurry SVar) <$> symbolicFunc
-
-sLit :: Parser SLit
-sLit = numLit <|> charLit <|> boolLit 
+arithExpr :: Parser SExpr
+arithExpr = toInfix $ term <&> restT
   where
-    numLit = SNumLit <$> sNum
-    charLit = SCharLit <$> sChar
-    boolLit = SBoolLit <$> sBool
+    restT = repeat0 $ inSpaces plusOrMinusExpr <&> term 
+    term = toInfix $ factor' <&> restF
+    restF = repeat0 $ inSpaces termOpExpr <&> factor'
+    factor' = factor <|> (inParens arithExpr) 
+    toInfix = ((\(base,  fs) -> foldl' combine base fs) <$>) 
+      where
+        combine acc (op, e) =  SInfixExpr $ SInfix acc op e
 
-sNum :: Parser SNum
-sNum = floatLit <|> doubleLit <|> intLit
+plusOrMinusExpr :: Parser SVar
+plusOrMinusExpr = trackedCharToVar <$> track plusOrMinus
+
+termOpExpr :: Parser SVar
+termOpExpr = trackedCharToVar <$> track termOp
+
+trackedCharToVar :: (Char, Loc) -> SVar
+trackedCharToVar (c, l) = SVar [c] l
+
+factor :: Parser SExpr
+factor = factor' <|> inParens factor'
+  where 
+    factor' = variable <|> literal
+    literal = SLitExpr <$> lit
+    variable = SVarExpr <$> var
+
+var :: Parser SVar
+var = (uncurry SVar) <$> functionId
+
+lit :: Parser SLit
+lit = numLit <|> charLit <|> boolLit 
   where
-    intLit = SIntNum <$> sInt
-    doubleLit = SDoubleNum <$> sDouble
-    floatLit = SFloatNum <$> sFloat
+    numLit = SNumLit <$> num
+    charLit = SCharLit <$> char
+    boolLit = SBoolLit <$> bool
 
-sInt :: Parser SInt
-sInt = parseMap SInt int
+num :: Parser SNum
+num = floatLit <|> doubleLit <|> intLit
+  where
+    intLit = SIntNum <$> int
+    doubleLit = SDoubleNum <$> double
+    floatLit = SFloatNum <$> float
 
-sDouble :: Parser SDouble
-sDouble = parseMap SDouble double
+int :: Parser SInt
+int = parseMap SInt rawInt
 
-sFloat :: Parser SFloat
-sFloat = parseMap SFloat float
+double :: Parser SDouble
+double = parseMap SDouble rawDouble
 
-sChar :: Parser SChar
-sChar = (\((_, content), _) -> SChar content) <$> singleQuote 
+float :: Parser SFloat
+float = parseMap SFloat rawFloat
+
+char :: Parser SChar
+char = (\((_, content), _) -> SChar content) <$> singleQuote 
   <&> (escaped <|> unescaped) <&> singleQuote
 
-sBool :: Parser SBool
-sBool = sTrue <|> sFalse
+bool :: Parser SBool
+bool = sTrue <|> sFalse
   where
     sTrue = (const STrue) <$> true
     sFalse = (const SFalse) <$> false
