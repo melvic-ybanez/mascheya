@@ -17,10 +17,10 @@ eval (CVarExpr (CVar name loc')) = maybe error' force . Env.lookup name
   where 
     error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
 eval (CLambdaExpr (CLambda (CVar name _) body')) = 
-  Result.succeedT . FunctionVal . Function name body'
+  Result.succeedT . ClosureVal . Closure name body'
 eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
   where 
-    handleFuncVal (FunctionVal closure@(Function param' _ funcEnv)) = \callerEnv -> do
+    handleFuncVal (ClosureVal closure@(Closure param' _ funcEnv)) = \callerEnv -> do
       argThunk <- lift $ newSTRef $ Delayed arg' callerEnv
       extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
       eval (body closure) extendedEnv
@@ -82,7 +82,7 @@ force (Thunk ref) = lift (readSTRef ref) >>= handleState
 
 reify :: Value s -> ResultT (ST s) PureValue
 reify (ThunkVal thunk) = force thunk >>= reify
-reify (FunctionVal (Function p b _)) = return $ PureFuncVal $ PureFunction p b
+reify (ClosureVal (Closure p b _)) = return $ PureClosureVal $ PureClosure p b
 reify (ConstVal c) = return $ PureConstVal c
 reify (ListVal NilVal) = return $ PureListVal PureNilVal 
 reify (ListVal (ConsVal h t)) = do

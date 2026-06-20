@@ -10,6 +10,7 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.ST (runST)
 import Mascheya.Core.Eval (reify)
 import qualified Mascheya.Core.Parser as Parser
+import qualified Mascheya.Core.Eval.Builtins as Builtins
 
 repl :: IO ()
 repl = do
@@ -24,6 +25,9 @@ repl = do
     run input = do 
       sourceExpr <- Parser.parse Parser.expr input
       coreExpr <- translateExpr sourceExpr
-      runST $ runExceptT $ Eval.eval coreExpr Env.empty >>= reify    
+      runST $ runExceptT $ do
+        env <- Builtins.init Env.empty
+        val <- Eval.eval coreExpr env
+        reify val
     handleResult (Left error') = display error'
     handleResult (Right stVal) = display stVal

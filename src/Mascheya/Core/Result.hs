@@ -44,6 +44,9 @@ parseError error = fail . ParseError error
 formatMsgWithLoc :: String -> Loc -> String
 formatMsgWithLoc msg loc = msg ++ " at " ++ display loc ++ ". "
 
+dummyLoc :: Loc
+dummyLoc = Loc 1
+
 instance Display Failure where
   display (ParseError error loc) = formatMsgWithLoc "Parser Error" loc ++ display error
   display (RuntimeError error loc) = formatMsgWithLoc "Runtime Error" loc ++ display error

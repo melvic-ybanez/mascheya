@@ -11,7 +11,7 @@ import Mascheya.Core.Ast.Core (CExpr)
 type VEnv s = Env (Thunk s)
 
 data Value s = ThunkVal (Thunk s) 
-  | FunctionVal (Function s) 
+  | ClosureVal (Closure s) 
   | ConstVal Const 
   | ListVal (List s) 
   | Bottom
@@ -20,7 +20,7 @@ newtype Thunk s = Thunk (STRef s (ThunkState s))
 
 data ThunkState s = Delayed CExpr (VEnv s) | Ready (Value s)
 
-data Function s = Function { param :: String, body :: CExpr, closureEnv :: VEnv s }
+data Closure s = Closure { param :: String, body :: CExpr, closureEnv :: VEnv s }
 
 data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | BoolVal Bool 
 
@@ -28,14 +28,14 @@ data List s = ConsVal (Thunk s) (Thunk s) | NilVal
 
 type Out s = ResultT (ST s) (Value s)
 
-data PureValue = PureFuncVal PureFunction | PureConstVal Const | PureListVal PureList | PureBottom
+data PureValue = PureClosureVal PureClosure | PureConstVal Const | PureListVal PureList | PureBottom
 
-data PureFunction = PureFunction String CExpr  
+data PureClosure = PureClosure String CExpr  
 
 data PureList = PureConsVal PureValue PureList | PureNilVal 
 
 instance Display PureValue where
-  display (PureFuncVal _) = "<function>"
+  display (PureClosureVal _) = "<function>"
   display (PureConstVal const') = display const'
   display (PureListVal list) = display list
   display PureBottom = "_|_"
@@ -57,5 +57,5 @@ instance Display PureList where
           separator = if null accStr 
             then "" else display Lexemes.comma ++ display Lexemes.space
     
-instance Display (Function s) where
-  display (Function _ _ _) = "<closure>"
+instance Display (Closure s) where
+  display (Closure _ _ _) = "<closure>"

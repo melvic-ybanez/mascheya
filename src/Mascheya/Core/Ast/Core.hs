@@ -1,5 +1,5 @@
 module Mascheya.Core.Ast.Core where
-import Mascheya.Core.Result (Loc)
+import Mascheya.Core.Result (Loc (Loc), dummyLoc)
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
   | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc
@@ -29,6 +29,9 @@ data CIf = CIf CExpr CExpr CExpr deriving Show
 
 newVar :: String -> Loc -> CExpr
 newVar name = CVarExpr . CVar name
+
+newDummyVar :: String -> CVar
+newDummyVar = flip CVar dummyLoc
 
 newLambda :: CVar -> CExpr -> CExpr
 newLambda param' = CLambdaExpr . CLambda param'

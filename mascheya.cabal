@@ -17,6 +17,7 @@ library
       Mascheya.Core.Ast.Translation
       Mascheya.Core.Display
       Mascheya.Core.Eval
+      Mascheya.Core.Eval.Builtins
       Mascheya.Core.Eval.Env
       Mascheya.Core.Eval.Value
       Mascheya.Core.Lexemes

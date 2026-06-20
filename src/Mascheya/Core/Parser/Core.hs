@@ -31,7 +31,7 @@ fail :: ParseError -> Loc -> Parser a
 fail err = Parser . const . parseError err
 
 parseMap :: Read a => (a -> b) -> Parser String -> Parser b
-parseMap f = fmap (f . read)
+parseMap f = fmap $ f . read
 
 track :: Parser a -> Parser (a, Loc)
 track p = p >>= \a -> Parser {
