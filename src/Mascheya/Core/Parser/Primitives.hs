@@ -22,7 +22,11 @@ functionId = (\((h, t), l) -> (h : t, l)) <$> (track $ validHead <&> validTail)
     validTail = repeat0 $ letter <|> digit <|> underscore <|> singleQuote
 
 rawInt :: Parser String
-rawInt = toList <$> repeat digit 
+rawInt = toRawInt <$> opt plusOrMinus <&> (toList <$> repeat digit)
+  where
+    toRawInt (Nothing, digits) = digits
+    toRawInt (Just sign, digits) | sign == Lexemes.minus = sign : digits
+      | otherwise = digits
 
 rawDouble :: Parser String
 rawDouble = combine <$> rawInt <&> matchChar Lexemes.dot <&> rawInt
