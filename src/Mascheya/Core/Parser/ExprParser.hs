@@ -2,23 +2,33 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, repeat0, matchChar)
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, repeat0, matchChar, matchStr)
 import Mascheya.Core.Parser.Primitives 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
+import Data.List.NonEmpty (fromList)
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
   where 
-    expr' = appExpr <|> arithExpr <|> factor
+    expr' = compExpr
 
 appExpr :: Parser SExpr
-appExpr = (\((f, a), l) -> SAppExpr $ SApp f a l) <$> (track $ factor' <&> args')
+appExpr = toExpr <$> (track $ factor' <&> args')
   where 
     factor' = factor <|> (inParens $ appExpr)
-    args' = repeat arg
+    args' = repeat0 arg
     arg = snd <$> matchChar Lexemes.space <&> factor'
+
+    toExpr ((f, []), _) = f
+    toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
+
+compExpr :: Parser SExpr
+compExpr = toInfix $ factor' <&> restA
+  where
+    restA = repeat0 $ inSpaces comparison <&> factor'
+    factor' = arithExpr <|> (inParens compExpr)
 
 arithExpr :: Parser SExpr
 arithExpr = toInfix $ term <&> restT
@@ -26,19 +36,7 @@ arithExpr = toInfix $ term <&> restT
     restT = repeat0 $ inSpaces plusOrMinusExpr <&> term 
     term = toInfix $ factor' <&> restF
     restF = repeat0 $ inSpaces termOpExpr <&> factor'
-    factor' = factor <|> (inParens arithExpr) 
-    toInfix = ((\(base,  fs) -> foldl' combine base fs) <$>) 
-      where
-        combine acc (op, e) =  SInfixExpr $ SInfix acc op e
-
-plusOrMinusExpr :: Parser SVar
-plusOrMinusExpr = trackedCharToVar <$> track plusOrMinus
-
-termOpExpr :: Parser SVar
-termOpExpr = trackedCharToVar <$> track termOp
-
-trackedCharToVar :: (Char, Loc) -> SVar
-trackedCharToVar (c, l) = SVar [c] l
+    factor' = appExpr <|> (inParens arithExpr) 
 
 factor :: Parser SExpr
 factor = factor' <|> inParens factor'
@@ -82,3 +80,41 @@ bool = sTrue <|> sFalse
   where
     sTrue = (const STrue) <$> true
     sFalse = (const SFalse) <$> false
+
+sVar :: String -> Parser SVar
+sVar = ((uncurry SVar) <$>) . track . matchStr
+
+comparison :: Parser SVar
+comparison = eqEq <|> notEq <|> lessThanEq <|> greaterThanEq <|> lessThan<|> greaterThan
+
+eqEq :: Parser SVar
+eqEq = sVar Lexemes.equalsEquals
+
+notEq :: Parser SVar
+notEq = sVar Lexemes.notEquals
+
+lessThan :: Parser SVar
+lessThan = sVar [Lexemes.lessThan]
+
+greaterThan :: Parser SVar
+greaterThan = sVar [Lexemes.greaterThan]
+
+lessThanEq :: Parser SVar
+lessThanEq = sVar Lexemes.lessThanEquals
+
+greaterThanEq :: Parser SVar
+greaterThanEq = sVar Lexemes.greaterThanEquals
+
+plusOrMinusExpr :: Parser SVar
+plusOrMinusExpr = trackedCharToVar <$> track plusOrMinus
+
+termOpExpr :: Parser SVar
+termOpExpr = trackedCharToVar <$> track termOp
+
+trackedCharToVar :: (Char, Loc) -> SVar
+trackedCharToVar (c, l) = SVar [c] l
+
+toInfix :: Parser (SExpr, [(SVar, SExpr)]) -> Parser SExpr
+toInfix = ((\(base,  fs) -> foldl' combine base fs) <$>) 
+  where
+    combine acc (op, e) =  SInfixExpr $ SInfix acc op e

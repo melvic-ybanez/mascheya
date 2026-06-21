@@ -1,5 +1,5 @@
 module Mascheya.Core.Ast.Core where
-import Mascheya.Core.Result (Loc (Loc), dummyLoc)
+import Mascheya.Core.Result (Loc, dummyLoc)
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
   | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc
@@ -18,14 +18,17 @@ data CBool = CTrue | CFalse deriving Show
 data CLambda = CLambda { param :: CVar, body :: CExpr } deriving Show
 data CApp = CApp { callable :: CExpr, arg :: CExpr, source :: String, appLoc :: Loc } deriving Show
 
-data CBuiltinFunc = CArithFunc CArith | CIfFunc CIf | CListFunc CList
-  deriving Show
+data CBuiltinFunc = CInfixFunc CInfix | CIfFunc CIf | CListFunc CList deriving Show
 
-data CArith = CArith CArithKind CExpr CExpr deriving Show
+data CInfix = CInfix CExpr CInfixOp CExpr deriving Show
 
-data CArithKind = CPlus | CMinus | CTimes | CDivide | CModulo deriving Show
+data CArith = CPlus | CMinus | CTimes | CDivide | CModulo deriving Show
 data CList = CCons CExpr CExpr | CNil deriving Show
 data CIf = CIf CExpr CExpr CExpr deriving Show
+
+data CInfixOp = CArithOp CArith | CCompOp CComp deriving Show
+data CComp = CEqEq | CNotEq | CLt | CLte | CGt | CGte
+  deriving Show
 
 newVar :: String -> Loc -> CExpr
 newVar name = CVarExpr . CVar name
@@ -47,3 +50,8 @@ newDouble = newNumeric CDouble
 
 newNumeric :: (a -> CNumeric) -> a -> CExpr
 newNumeric f = CConstExpr . CNumConst . f
+
+newBool :: Bool -> CExpr
+newBool b = CConstExpr $ CBoolConst $ case b of 
+  True -> CTrue
+  False -> CFalse

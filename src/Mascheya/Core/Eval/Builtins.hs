@@ -11,21 +11,33 @@ import Control.Monad.ST (ST)
 type Builtin s = VEnv s -> ResultT (ST s) (VEnv s)
 
 init :: Builtin s
-init = arith  -- TODO: Add more bulitins here
+init env = initArith env >>= initComp 
 
-arith :: Builtin s
-arith env = arithKind Lexemes.plus CPlus env
+initArith :: Builtin s
+initArith env = arithKind Lexemes.plus CPlus env
   >>= arithKind Lexemes.minus CMinus
   >>= arithKind Lexemes.times CTimes
   >>= arithKind Lexemes.divide CDivide
   >>= arithKind Lexemes.modulo CModulo
+  where 
+    arithKind lexeme kind = initInfix [lexeme] (CArithOp kind)
 
-arithKind :: Char -> CArithKind -> Builtin s
-arithKind lexeme kind env = fmap (\ref -> Env.assign [lexeme] (Thunk ref) env) 
+initComp :: Builtin s
+initComp env = compKind Lexemes.equalsEquals CEqEq env
+  >>= compKind Lexemes.notEquals CNotEq
+  >>= compKind [Lexemes.lessThan] CLt
+  >>= compKind Lexemes.lessThanEquals CLte
+  >>= compKind [Lexemes.greaterThan] CGt
+  >>= compKind Lexemes.greaterThanEquals CGte
+  where
+    compKind lexeme kind = initInfix lexeme (CCompOp kind)
+
+initInfix :: String -> CInfixOp -> Builtin s
+initInfix opLexeme infixOp env = fmap (\ref -> Env.assign opLexeme (Thunk ref) env) 
   $ lift $ newSTRef $ Delayed outerClosure env
   where 
     a = newDummyVar "a"
     b = newDummyVar "b"
     outerClosure = CLambdaExpr $ CLambda a innerClosure
     innerClosure = CLambdaExpr $ CLambda b $ CBuiltinFuncExpr 
-      $ CArithFunc $ CArith kind (CVarExpr a) (CVarExpr b)
+      $ CInfixFunc $ CInfix (CVarExpr a) infixOp (CVarExpr b)

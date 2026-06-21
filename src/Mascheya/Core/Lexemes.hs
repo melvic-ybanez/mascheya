@@ -95,3 +95,18 @@ false = "False"
 
 underscore :: Char
 underscore = '_'
+
+exclamation :: Char
+exclamation = '!'
+
+equalsEquals :: String
+equalsEquals = [equals, equals]
+
+notEquals :: String
+notEquals = [exclamation, equals]
+
+lessThanEquals :: String
+lessThanEquals = [lessThan, equals]
+
+greaterThanEquals :: String
+greaterThanEquals = [greaterThan, equals]

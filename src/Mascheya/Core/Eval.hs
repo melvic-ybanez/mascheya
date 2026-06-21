@@ -26,30 +26,53 @@ eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip h
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
 eval (CBuiltinFuncExpr builtin) = case builtin of
-  CArithFunc (CArith op a b) -> case op of
-    CPlus -> evalArith (+) (+)
-    CMinus -> evalArith (-) (-)
-    CTimes -> evalArith (*) (*)
-    CDivide -> evalArith div (/)
-    CModulo -> evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of 
-      ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
-      (_, _) -> constTypeErrorT
+  CInfixFunc (CInfix a op b) -> case op of
+    CArithOp arithOp -> case arithOp of
+      CPlus -> evalArith (+)
+      CMinus -> evalArith (-)
+      CTimes -> evalArith (*)
+      CDivide -> evalArithWith div (/) (/)
+      CModulo -> evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of 
+        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
+        (_, _) -> constTypeErrorT
 
-    where 
-      evalArithWith f = runReaderT $ do
+      where
+        evalArith :: (forall a. Num a => a -> a -> a) -> VEnv s -> Out s
+        evalArith binOp = evalArithWith binOp binOp binOp
+
+        evalArithWith fi ff fd = evalInfix 
+          (\i -> newInt . fi i) (\f -> newFloat . ff f) (\d -> newDouble . fd d)
+    
+    CCompOp compOp -> case compOp of
+      CEqEq -> evalComp (==) 
+      CLt -> evalComp (<)
+      CLte -> evalComp (<=)
+      CGt -> evalComp (>)
+      CGte -> evalComp (>=)
+      CNotEq -> evalComp (/=)
+
+      where
+        evalComp :: (forall a. (Ord a, Eq a) => a -> a -> Bool) -> VEnv s -> Out s
+        evalComp comp = evalInfix 
+          (\i -> newBool . comp i) (\f -> newBool . comp f) (\d -> newBool . comp d)
+    where
+      evalInfixOpWith f = runReaderT $ do
         aVal <- ReaderT $ eval a
         bVal <- ReaderT $ eval b
         ReaderT $ f aVal bVal
 
-      evalArith :: (Int -> Int -> Int) -> 
-        (forall a. Fractional a => a -> a -> a) -> VEnv s -> Out s
-      evalArith f g = evalArithWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
-        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ f i1 i2
-        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ newFloat $ g f1 f2
-        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ newDouble $ g d1 d2
+      evalInfix :: (Int -> Int -> CExpr) 
+        -> (Float -> Float -> CExpr) 
+        -> (Double -> Double -> CExpr)
+        -> VEnv s -> Out s
+      evalInfix fi ff fd = evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
+        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ fi i1 i2
+        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ ff f1 f2
+        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ fd d1 d2
         (Bottom, _) -> returnBottom
         (_, Bottom) -> returnBottom
         (_, _) -> constTypeErrorT
+
   CIfFunc (CIf cond ifTrue ifFalse) -> \env -> eval cond env >>= flip handle env 
     where 
       handle (ConstVal (BoolVal True)) = eval ifTrue
