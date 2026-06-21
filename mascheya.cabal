@@ -13,8 +13,8 @@ build-type:     Simple
 library
   exposed-modules:
       Mascheya.Core.Ast.Core
+      Mascheya.Core.Ast.Enriched
       Mascheya.Core.Ast.Source
-      Mascheya.Core.Ast.Translation
       Mascheya.Core.Display
       Mascheya.Core.Eval
       Mascheya.Core.Eval.Builtins
@@ -27,6 +27,9 @@ library
       Mascheya.Core.Parser.Primitives
       Mascheya.Core.Repl
       Mascheya.Core.Result
+      Mascheya.Core.Translate
+      Mascheya.Core.Translate.FromEnriched
+      Mascheya.Core.Translate.FromSource
       Mascheya.Core.Types
   other-modules:
       Paths_mascheya

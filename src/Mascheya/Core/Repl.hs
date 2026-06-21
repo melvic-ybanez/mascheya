@@ -3,7 +3,6 @@ module Mascheya.Core.Repl where
 import System.IO (hFlush, stdout)
 import System.Exit (die)
 import qualified Mascheya.Core.Eval as Eval
-import Mascheya.Core.Ast.Translation (translateExpr)
 import Mascheya.Core.Display
 import qualified Mascheya.Core.Eval.Env as Env
 import Control.Monad.Except (runExceptT)
@@ -11,6 +10,7 @@ import Control.Monad.ST (runST)
 import Mascheya.Core.Eval (reify)
 import qualified Mascheya.Core.Parser as Parser
 import qualified Mascheya.Core.Eval.Builtins as Builtins
+import Mascheya.Core.Translate (fullTranslate)
 
 repl :: IO ()
 repl = do
@@ -24,7 +24,7 @@ repl = do
   where 
     run input = do 
       sourceExpr <- Parser.parse Parser.expr input
-      coreExpr <- translateExpr sourceExpr
+      coreExpr <- fullTranslate sourceExpr
       runST $ runExceptT $ do
         env <- Builtins.init Env.empty
         val <- Eval.eval coreExpr env

@@ -1,4 +1,5 @@
 module Mascheya.Core.Ast.Core where
+  
 import Mascheya.Core.Result (Loc, dummyLoc)
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 

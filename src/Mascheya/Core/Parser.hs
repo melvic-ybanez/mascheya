@@ -6,7 +6,7 @@ module Mascheya.Core.Parser (
   module Mascheya.Core.Parser.Primitives,
   module Mascheya.Core.Parser.ExprParser,
   parse,
-  ) where
+) where
 
 import Mascheya.Core.Parser.Core
 import Mascheya.Core.Parser.Primitives
