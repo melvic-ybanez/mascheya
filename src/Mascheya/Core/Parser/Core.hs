@@ -45,8 +45,17 @@ opt p = Parser {
     Right (val, newState) -> (Just val, newState) 
 }
 
+unit :: Parser a -> Parser ()
+unit = ((const ()) <$>)
+
 bracket :: Char -> Parser a -> Char -> Parser a
-bracket l p r = (\((_, a), _) -> a) <$> matchChar l <&> p <&> matchChar r
+bracket l p = enclosedLr (matchChar l) p . matchChar
+
+enclosedLr :: Parser l -> Parser a -> Parser r -> Parser a
+enclosedLr pl pa pr = (\((_, a), _) -> a) <$> pl <&> pa <&> pr
+
+enclosed :: Parser lr -> Parser a -> Parser a
+enclosed plr pa = enclosedLr plr pa plr
 
 matchStr :: String -> Parser String
 matchStr src = matchStrExpect src src

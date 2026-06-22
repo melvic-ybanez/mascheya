@@ -110,3 +110,15 @@ lessThanEquals = [lessThan, equals]
 
 greaterThanEquals :: String
 greaterThanEquals = [greaterThan, equals]
+
+letKw :: String
+letKw = "let"
+
+inKw :: String
+inKw = "in"
+
+newline :: Char
+newline = '\n'
+
+keyWords :: [String]
+keyWords = [letKw, inKw]

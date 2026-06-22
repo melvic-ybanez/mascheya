@@ -3,23 +3,27 @@ module Mascheya.Core.Parser.Primitives where
 import Prelude hiding (pred, fail, repeat)
 
 import Mascheya.Core.Parser.Core 
-import Mascheya.Core.Result (ParseError (Expected), parseError, Loc (Loc))
+import Mascheya.Core.Result (ParseError (Expected, Invalid), parseError, Loc (Loc))
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Control.Applicative ((<|>))
 import Data.Char
 import Data.Either (isRight)
 import Data.List (find)
 import Data.List.NonEmpty (toList)
+import Mascheya.Core.Types (Endo)
 
 -- | Parser for the function and/or variable identifier.
 -- It must start with either a lower case letter or an underscore. 
 -- The rest of the characters can be letters (lower or upper), digits,
 -- underscores and single quotes.
 functionId :: Parser (String, Loc)
-functionId = (\((h, t), l) -> (h : t, l)) <$> (track $ validHead <&> validTail)
+functionId = (track $ validHead <&> validTail) >>= (\((h, t), l) -> validName (h : t) l)
   where
     validHead = lower <|> underscore
     validTail = repeat0 $ letter <|> digit <|> underscore <|> singleQuote
+    validName name at = if name `elem` Lexemes.keyWords 
+      then fail (Invalid "variable" name) at
+      else return (name, at)
 
 rawInt :: Parser String
 rawInt = toRawInt <$> opt plusOrMinus <&> (toList <$> repeat digit)
@@ -125,8 +129,17 @@ plusOrMinus = matchChar Lexemes.plus <|> matchChar Lexemes.minus
 termOp :: Parser Char
 termOp = matchChar Lexemes.times <|> matchChar Lexemes.divide <|> matchChar Lexemes.modulo
 
-skipSpaces :: Parser ()
-skipSpaces = (const ()) <$> repeat0 space
+spaces0 :: Parser ()
+spaces0 = unit $ repeat0 space
 
-inSpaces :: Parser a -> Parser a
-inSpaces p = (\((_, a), _) -> a) <$> skipSpaces <&> p <&> skipSpaces
+spaces :: Parser ()
+spaces = unit $ repeat space
+
+inSpaces0 :: Endo (Parser a)
+inSpaces0 = enclosed spaces0
+
+inSpaces :: Endo (Parser a)
+inSpaces = enclosed spaces
+
+equals :: Parser Char
+equals = matchChar Lexemes.equals

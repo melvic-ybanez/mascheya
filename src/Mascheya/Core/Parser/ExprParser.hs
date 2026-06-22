@@ -2,7 +2,7 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), repeat, track, repeat0, matchChar, matchStr)
+import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), track, repeat0, matchChar, matchStr)
 import Mascheya.Core.Parser.Primitives 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
@@ -14,29 +14,38 @@ expr = expr' <|> inParens expr'
   where 
     expr' = compExpr
 
-appExpr :: Parser SExpr
-appExpr = toExpr <$> (track $ factor' <&> args')
-  where 
-    factor' = factor <|> (inParens $ appExpr)
-    args' = repeat0 arg
-    arg = snd <$> matchChar Lexemes.space <&> factor'
-
-    toExpr ((f, []), _) = f
-    toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
-
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA
   where
-    restA = repeat0 $ inSpaces comparison <&> factor'
+    restA = repeat0 $ inSpaces0 comparison <&> factor'
     factor' = arithExpr <|> (inParens compExpr)
 
 arithExpr :: Parser SExpr
 arithExpr = toInfix $ term <&> restT
   where
-    restT = repeat0 $ inSpaces plusOrMinusExpr <&> term 
+    restT = repeat0 $ inSpaces0 plusOrMinusExpr <&> term 
     term = toInfix $ factor' <&> restF
-    restF = repeat0 $ inSpaces termOpExpr <&> factor'
-    factor' = appExpr <|> (inParens arithExpr) 
+    restF = repeat0 $ inSpaces0 termOpExpr <&> factor'
+    factor' = letExpr <|> (inParens arithExpr) 
+
+letExpr :: Parser SExpr
+letExpr = let' <|> appExpr
+  where 
+    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces var <&> inSpaces0 equals <&> in'
+    in' = (\((body, _), expr') -> (body, expr')) 
+      <$> expr <&> inSpaces (matchStr Lexemes.inKw) <&> expr
+    toLet (((_, var'), _), (body, expr')) = SLetExpr $ SLet var' body expr'
+
+appExpr :: Parser SExpr
+appExpr = toExpr <$> (track $ factor' <&> args')
+  where 
+    factor' = call <|> (inParens $ appExpr)
+    call = factor <|> (inParens expr)
+    args' = repeat0 arg
+    arg = snd <$> matchChar Lexemes.space <&> call
+
+    toExpr ((f, []), _) = f
+    toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
 
 factor :: Parser SExpr
 factor = factor' <|> inParens factor'
@@ -85,7 +94,7 @@ sVar :: String -> Parser SVar
 sVar = ((uncurry SVar) <$>) . track . matchStr
 
 comparison :: Parser SVar
-comparison = eqEq <|> notEq <|> lessThanEq <|> greaterThanEq <|> lessThan<|> greaterThan
+comparison = eqEq <|> notEq <|> lessThanEq <|> greaterThanEq <|> lessThan <|> greaterThan
 
 eqEq :: Parser SVar
 eqEq = sVar Lexemes.equalsEquals
