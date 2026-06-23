@@ -15,6 +15,7 @@ import Mascheya.Core.Parser (Parser, word, (<&>), matchChar, spaces0, spaces)
 import Data.List (stripPrefix, intercalate)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (lines)
+import Data.Char (isSpace)
 
 data State = State {
   lineMode :: LineMode
@@ -26,11 +27,11 @@ repl :: State -> IO ()
 repl state = do
   putStr "mascheya > "
   hFlush stdout
-  input <- if lineMode state == Single then getLine else getMultiLine
-  case input of
+  rawInput <- if lineMode state == Single then getLine else getMultiLine
+  case trim rawInput of
     [] -> loop
     ":q" -> die "Bye!"
-    _ -> case stripPrefix ":set" input of
+    input -> case stripPrefix ":set" input of
       Nothing -> do
         putStrLn $ handleResult $ run input
         loop
@@ -55,12 +56,17 @@ repl state = do
     
     report msg = (putStrLn msg) >>= const loop
     loop = repl state
+
     getMultiLine = recurse []
       where
         recurse lines = do
           line <- getLine
-          if line == "-- end" then return $ intercalate [Lexemes.newline] $ reverse lines 
+          if trim line == "-- end" then return $ intercalate [Lexemes.newline] $ reverse lines 
           else recurse $ line : lines
+
+    trim = trim' . trim'
+      where
+        trim' = reverse . dropWhile isSpace
 
 setArgParser :: Parser (String, String)
 setArgParser = (\((((_, arg), _), val), _) -> (arg, val)) 
