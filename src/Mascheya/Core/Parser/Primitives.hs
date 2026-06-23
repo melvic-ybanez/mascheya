@@ -79,6 +79,9 @@ letter = lower <|> upper
 alphanum :: Parser Char
 alphanum = letter <|> digit
 
+word :: Parser String
+word = toList <$> repeat letter
+
 space :: Parser Char
 space = satisfyExpect isSpace "space character"
 
