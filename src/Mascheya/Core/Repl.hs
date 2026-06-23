@@ -17,10 +17,12 @@ repl = do
   putStr "> "
   hFlush stdout
   input <- getLine
-  if input == ":q" then die "Bye!"
-  else do
-    putStrLn $ handleResult $ run input
-    repl
+  case input of
+    [] -> repl
+    ":q" -> die "Bye!"
+    _ -> do
+      putStrLn $ handleResult $ run input
+      repl
   where 
     run input = do 
       sourceExpr <- Parser.parse Parser.expr input
