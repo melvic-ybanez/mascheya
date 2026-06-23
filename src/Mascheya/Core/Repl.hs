@@ -14,7 +14,7 @@ import Mascheya.Core.Translate (fullTranslate)
 
 repl :: IO ()
 repl = do
-  putStr "> "
+  putStr "mascheya > "
   hFlush stdout
   input <- getLine
   case input of
