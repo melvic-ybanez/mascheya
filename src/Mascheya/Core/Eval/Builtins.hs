@@ -3,9 +3,7 @@ import Mascheya.Core.Eval.Value (VEnv, ThunkState (Delayed), Thunk (Thunk))
 import qualified Mascheya.Core.Eval.Env as Env
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Ast.Core 
-import Data.STRef (newSTRef)
-import Control.Monad.Trans (lift)
-import Mascheya.Core.Result (ResultT)
+import Mascheya.Core.Result (ResultT, newLiftedRef)
 import Control.Monad.ST (ST)
 
 type Builtin s = VEnv s -> ResultT (ST s) (VEnv s)
@@ -34,7 +32,7 @@ initComp env = compKind Lexemes.equalsEquals CEqEq env
 
 initInfix :: String -> CInfixOp -> Builtin s
 initInfix opLexeme infixOp env = fmap (\ref -> Env.assign opLexeme (Thunk ref) env) 
-  $ lift $ newSTRef $ Delayed outerClosure env
+  $ newLiftedRef env >>= newLiftedRef . Delayed outerClosure
   where 
     a = newDummyVar "a"
     b = newDummyVar "b"

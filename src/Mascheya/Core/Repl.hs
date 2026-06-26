@@ -25,7 +25,7 @@ data LineMode = Single | Multi deriving Eq
 
 repl :: State -> IO ()
 repl state = do
-  putStr "mascheya > "
+  putStr "mascheya> "
   hFlush stdout
   rawInput <- if lineMode state == Single then getLine else getMultiLine
   case trim rawInput of

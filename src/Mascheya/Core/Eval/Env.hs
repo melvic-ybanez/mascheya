@@ -33,3 +33,6 @@ assign varName value (GlobalEnv (Global table')) =
 
 extend :: String -> a -> Endo (Env a)
 extend name val = LocalEnv . Local (Map.singleton name val) 
+
+extend0 :: Endo (Env a)
+extend0 = LocalEnv . Local Map.empty

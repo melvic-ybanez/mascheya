@@ -7,7 +7,7 @@ import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList)
+import Data.List.NonEmpty (fromList, repeat)
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
@@ -31,10 +31,10 @@ arithExpr = toInfix $ term <&> restT
 letExpr :: Parser SExpr
 letExpr = let' <|> appExpr
   where 
-    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces var <&> inSpaces0 equals <&> in'
-    in' = (\((body, _), expr') -> (body, expr')) 
-      <$> expr <&> inSpaces (matchStr Lexemes.inKw) <&> expr
-    toLet (((_, var'), _), (body, expr')) = SLetExpr $ SLet var' body expr'
+    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces def <&> in'
+    def = (\((v, _), e) -> (v, e)) <$> (var <&> inSpaces0 equals <&> expr)
+    in' = snd <$> matchStr Lexemes.inKw <&> spaces <&> expr
+    toLet ((_, (var', body)), expr') = SLetExpr $ SLet var' body expr'
 
 appExpr :: Parser SExpr
 appExpr = toExpr <$> (track $ factor' <&> args')

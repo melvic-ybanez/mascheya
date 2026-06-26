@@ -18,7 +18,7 @@ data Value s = ThunkVal (Thunk s)
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
 
-data ThunkState s = Delayed CExpr (VEnv s) | Ready (Value s)
+data ThunkState s = Delayed CExpr (STRef s (VEnv s)) | Ready (Value s)
 
 data Closure s = Closure { param :: String, body :: CExpr, closureEnv :: VEnv s }
 

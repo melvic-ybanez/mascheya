@@ -7,6 +7,9 @@ import Data.List.NonEmpty
 import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
 import Control.Monad.Except (ExceptT, MonadError (throwError))
+import Data.STRef (newSTRef, STRef)
+import Control.Monad.ST
+import Control.Monad.Trans (lift)
 
 type Result = Either FailureNel 
 type ResultT = ExceptT FailureNel 
@@ -37,6 +40,9 @@ failAll = Left
 
 failT :: Monad m => Failure -> ResultT m a
 failT = throwError . singleton
+
+newLiftedRef :: a -> ExceptT FailureNel (ST s) (STRef s a)
+newLiftedRef = lift . newSTRef
 
 parseError :: ParseError -> Loc -> Result a
 parseError error = fail . ParseError error

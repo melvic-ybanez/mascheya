@@ -10,4 +10,4 @@ fromEExpr (ELetExpr (ELet var body' expr)) = do
   coreBody <- fromEExpr body'
   coreExpr <- fromEExpr expr
   let callable' = CLambdaExpr $ CLambda var coreExpr
-  return $ CAppExpr $ CApp callable' coreBody "<let-expression>" (varLoc var)
+  return $ CAppExpr $ CApp callable' (CRec coreBody) "<let-expression>" (varLoc var)

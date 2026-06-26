@@ -8,7 +8,7 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT) )
-import Data.STRef (newSTRef, writeSTRef, readSTRef)
+import Data.STRef (writeSTRef, readSTRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
@@ -21,8 +21,19 @@ eval (CLambdaExpr (CLambda (CVar name _) body')) =
 eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
   where 
     handleFuncVal (ClosureVal closure@(Closure param' _ funcEnv)) = \callerEnv -> do
-      argThunk <- lift $ newSTRef $ Delayed arg' callerEnv
-      extendedEnv <- return $ Env.extend param' (Thunk argThunk) funcEnv
+      argEnv <- newLiftedRef callerEnv
+      
+      -- the argument will be evaluated when needed, using the caller's env
+      argThunk <- newLiftedRef $ Delayed arg' argEnv
+
+      let extendWithParam = Env.extend param' (Thunk argThunk)
+      extendedEnv <- return $ extendWithParam funcEnv
+
+      -- recursive args should include the rhs in the scope
+      case arg' of
+        CRec _ -> lift $ writeSTRef argEnv $ extendWithParam callerEnv
+        _ -> return ()
+
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
 eval (CBuiltinFuncExpr builtin) = case builtin of
@@ -80,9 +91,10 @@ eval (CBuiltinFuncExpr builtin) = case builtin of
       handle Bottom = returnBottom
       handle _ = constTypeErrorT
   CListFunc CNil -> constSucceedT $ ListVal NilVal
-  CListFunc (CCons h t) -> \env -> do
-    dh <- lift $ newSTRef $ Delayed h env
-    dt <- lift $ newSTRef $ Delayed t env
+  CListFunc (CCons h t) -> \envRef -> do
+    env <- newLiftedRef envRef
+    dh <- newLiftedRef $ Delayed h env
+    dt <- newLiftedRef $ Delayed t env
     return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
 eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
   where 
@@ -93,12 +105,14 @@ eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
     eval' (CCharConst (CChar char)) = CharVal char
     eval' (CBoolConst CTrue) = BoolVal True
     eval' (CBoolConst CFalse) = BoolVal False
+eval (CRec expr) = eval expr
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState
   where 
     handleState (Ready out) = return out
-    handleState (Delayed expr env) = do
+    handleState (Delayed expr envRef) = do
+      env <- lift $ readSTRef envRef
       val <- eval expr env 
       lift $ writeSTRef ref (Ready val)
       return val

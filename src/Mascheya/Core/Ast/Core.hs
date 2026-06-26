@@ -3,7 +3,7 @@ module Mascheya.Core.Ast.Core where
 import Mascheya.Core.Result (Loc, dummyLoc)
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
-  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc
+  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CRec CExpr
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
