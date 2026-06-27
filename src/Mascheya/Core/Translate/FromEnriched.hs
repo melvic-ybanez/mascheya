@@ -2,12 +2,11 @@ module Mascheya.Core.Translate.FromEnriched where
   
 import Mascheya.Core.Ast.Core 
 import Mascheya.Core.Result
-import Mascheya.Core.Ast.Enriched (EExpr (ELetExpr, ECoreExpr), ELet (ELet))
+import Mascheya.Core.Ast.Enrichments (ELet (ELet), EExpr (ELetExpr))
+import qualified Mascheya.Core.Result as Result
 
 fromEExpr :: EExpr -> Result CExpr
-fromEExpr (ECoreExpr core) = return core
-fromEExpr (ELetExpr (ELet var body' expr)) = do
-  coreBody <- fromEExpr body'
-  coreExpr <- fromEExpr expr
-  let callable' = CLambdaExpr $ CLambda var coreExpr
-  return $ CAppExpr $ CApp callable' (CRec coreBody) "<let-expression>" (varLoc var)
+fromEExpr (ELetExpr (ELet var body' expr)) = 
+  Result.succeed $ CAppExpr $ CApp callable' (CRec body') "<let-expression>" (varLoc var)
+  where 
+    callable' = CLambdaExpr $ CLambda var expr

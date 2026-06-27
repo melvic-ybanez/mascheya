@@ -10,12 +10,12 @@ import Control.Monad.ST (runST)
 import Mascheya.Core.Eval (reify)
 import qualified Mascheya.Core.Parser as Parser
 import qualified Mascheya.Core.Eval.Builtins as Builtins
-import Mascheya.Core.Translate (fullTranslate)
 import Mascheya.Core.Parser (Parser, word, (<&>), matchChar, spaces0, spaces)
 import Data.List (stripPrefix, intercalate)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (lines)
 import Data.Char (isSpace)
+import qualified Mascheya.Core.Translate as Translate
 
 data State = State {
   lineMode :: LineMode
@@ -45,7 +45,7 @@ repl state = do
   where 
     run input = do 
       sourceExpr <- Parser.parse Parser.expr input
-      coreExpr <- fullTranslate sourceExpr
+      coreExpr <- Translate.fromSExpr sourceExpr
       runST $ runExceptT $ do
         env <- Builtins.init Env.empty
         val <- Eval.eval coreExpr env
