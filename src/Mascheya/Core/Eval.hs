@@ -8,7 +8,7 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT) )
-import Data.STRef (writeSTRef, readSTRef, modifySTRef)
+import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
@@ -32,9 +32,11 @@ eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip h
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
 eval (CLetExpr (CLet defs expr)) = \env -> do
-  Def letEnv <- foldl' 
+  envRef <- newLiftedRef $ Env.extend0 env
+  Def letEnvRef <- foldl' 
     (\accDef def -> accDef >>= \(Def accEnv) -> evalCDef def accEnv) 
-    (Result.succeedT $ Def env) defs
+    (Result.succeedT $ Def envRef) defs
+  letEnv <- lift $ readSTRef letEnvRef
   eval expr letEnv
 eval (CBuiltinFuncExpr builtin) = case builtin of
   CInfixFunc (CInfix a op b) -> case op of
@@ -105,16 +107,17 @@ eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
     eval' (CCharConst (CChar char)) = CharVal char
     eval' (CBoolConst CTrue) = BoolVal True
     eval' (CBoolConst CFalse) = BoolVal False
-eval (CDefExpr def) = (DefVal <$>) . evalCDef def 
+eval (CDefExpr cDef) = \env -> do
+  envRef <- newLiftedRef $ Env.extend0 env
+  def <- evalCDef cDef envRef
+  return $ DefVal def
 
-evalCDef :: CDef -> VEnv s -> ResultT (ST s) (Def s)
-evalCDef (CDef lhs' rhs' source loc') = \env -> case lhs' of 
+evalCDef :: CDef -> STRef s (VEnv s) -> ResultT (ST s) (Def s)
+evalCDef (CDef lhs' rhs' source loc') = \envRef -> case lhs' of 
   CVarExpr (CVar name _) -> do
-    envRef <- newLiftedRef $ Env.extend0 env
     rhsState <- newLiftedRef $ Delayed rhs' envRef
     lift $ modifySTRef envRef (Env.assign name $ Thunk rhsState)
-    newEnv <- lift $ readSTRef envRef
-    return $ Def newEnv
+    return $ Def envRef
   _ -> Result.failT $ RuntimeError (MatchError source) loc'
 
 force :: Thunk s -> Out s

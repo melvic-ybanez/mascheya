@@ -27,7 +27,7 @@ data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | Boo
 
 data List s = ConsVal (Thunk s) (Thunk s) | NilVal
 
-newtype Def s = Def (VEnv s)
+newtype Def s = Def (STRef s (VEnv s))
 
 type Out s = ResultT (ST s) (Value s)
 
