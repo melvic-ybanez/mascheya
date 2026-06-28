@@ -8,7 +8,7 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT) )
-import Data.STRef (writeSTRef, readSTRef)
+import Data.STRef (writeSTRef, readSTRef, modifySTRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
@@ -23,19 +23,19 @@ eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip h
     handleFuncVal (ClosureVal closure@(Closure param' _ funcEnv)) = \callerEnv -> do
       argEnv <- newLiftedRef callerEnv
       
-      -- the argument will be evaluated when needed, using the caller's env
-      argThunk <- newLiftedRef $ Delayed arg' argEnv
+      -- the argument will be evaluated only when needed, using the caller's env
+      argState <- newLiftedRef $ Delayed arg' argEnv
 
-      let extendWithParam = Env.extend param' (Thunk argThunk)
+      let extendWithParam = Env.extend param' (Thunk argState)
       extendedEnv <- return $ extendWithParam funcEnv
-
-      -- recursive args should include the rhs in the scope
-      case arg' of
-        CRec _ -> lift $ writeSTRef argEnv $ extendWithParam callerEnv
-        _ -> return ()
 
       eval (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
+eval (CLetExpr (CLet defs expr)) = \env -> do
+  Def letEnv <- foldl' 
+    (\accDef def -> accDef >>= \(Def accEnv) -> evalCDef def accEnv) 
+    (Result.succeedT $ Def env) defs
+  eval expr letEnv
 eval (CBuiltinFuncExpr builtin) = case builtin of
   CInfixFunc (CInfix a op b) -> case op of
     CArithOp arithOp -> case arithOp of
@@ -105,7 +105,17 @@ eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
     eval' (CCharConst (CChar char)) = CharVal char
     eval' (CBoolConst CTrue) = BoolVal True
     eval' (CBoolConst CFalse) = BoolVal False
-eval (CRec expr) = eval expr
+eval (CDefExpr def) = (DefVal <$>) . evalCDef def 
+
+evalCDef :: CDef -> VEnv s -> ResultT (ST s) (Def s)
+evalCDef (CDef lhs' rhs' source loc') = \env -> case lhs' of 
+  CVarExpr (CVar name _) -> do
+    envRef <- newLiftedRef $ Env.extend0 env
+    rhsState <- newLiftedRef $ Delayed rhs' envRef
+    lift $ modifySTRef envRef (Env.assign name $ Thunk rhsState)
+    newEnv <- lift $ readSTRef envRef
+    return $ Def newEnv
+  _ -> Result.failT $ RuntimeError (MatchError source) loc'
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState
@@ -128,6 +138,7 @@ reify (ListVal (ConsVal h t)) = do
   case pureT of
     (PureListVal pureList) -> return $ PureListVal $ PureConsVal pureH pureList
     _ -> Result.failT $ InternalError $ TypecheckingFailed 
+reify (DefVal _) = return PureDef
 reify Bottom = return PureBottom
 
 returnBottom :: VEnv s -> Out s

@@ -1,13 +1,12 @@
 module Mascheya.Core.Ast.Source where
-import Mascheya.Core.Display (Display (display))
+import Mascheya.Core.Display (Display (display), SSV (SSV))
 import Mascheya.Core.Result (Loc)
 import qualified Mascheya.Core.Lexemes as Lexemes
-import Data.List.NonEmpty (NonEmpty ((:|)), fromList)
+import Data.List.NonEmpty (NonEmpty ((:|)), fromList, toList)
 import Data.List (intercalate)
-import qualified Mascheya.Core.Lexemes as Lexems
 
 data SExpr = SVarExpr SVar | SAppExpr SApp | SLitExpr SLit 
-  | SInfixExpr SInfix | SLetExpr SLet deriving Show
+  | SInfixExpr SInfix | SLetExpr SLet | SDefExpr SDef deriving Show
 
 data SVar = SVar { varName :: String, varLoc :: Loc } deriving Show
 data SLit = SNumLit SNum | SCharLit SChar | SBoolLit SBool deriving Show
@@ -25,7 +24,9 @@ data SChar = SChar Char deriving Show
 
 data SInfix = SInfix SExpr SVar SExpr deriving Show
 
-data SLet = SLet SVar SExpr SExpr deriving Show
+data SLet = SLet (NonEmpty SDef) SExpr deriving Show
+
+data SDef = SDef SExpr SExpr Loc deriving Show
 
 instance Display SExpr where
   display (SVarExpr var) = display var
@@ -43,10 +44,17 @@ instance Display SExpr where
         [] -> ""
         t' -> displayArgs $ fromList t'
   display (SInfixExpr (SInfix arg1 op arg2)) = 
-    intercalate [Lexemes.space] [display arg1, display op, display arg2]
-  display (SLetExpr (SLet var body expr)) = 
-    intercalate [Lexemes.space] [Lexems.letKw, display var, [Lexemes.equals], 
-      display body, Lexemes.newline : Lexemes.inKw, display expr]
+    display $ SSV [arg1, SVarExpr op, arg2]
+  display (SLetExpr (SLet defs expr)) = 
+    Lexemes.letKw ++ newlineIndent ++ displayDefs ++ [Lexemes.newline] ++ Lexemes.inKw 
+    ++ [Lexemes.space] ++ display expr
+    where 
+      newlineIndent = Lexemes.newline : [Lexemes.space, Lexemes.space]
+      displayDefs = intercalate newlineIndent $ fmap display $ display $ SSV $ toList defs
+  display (SDefExpr def) = display def
 
 instance Display SVar where
   display (SVar name _) = name
+
+instance Display SDef where
+  display (SDef rhs lhs _) = display $ SSV [rhs, lhs]

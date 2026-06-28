@@ -13,7 +13,6 @@ build-type:     Simple
 library
   exposed-modules:
       Mascheya.Core.Ast.Core
-      Mascheya.Core.Ast.Enrichments
       Mascheya.Core.Ast.Source
       Mascheya.Core.Display
       Mascheya.Core.Eval
@@ -28,7 +27,6 @@ library
       Mascheya.Core.Repl
       Mascheya.Core.Result
       Mascheya.Core.Translate
-      Mascheya.Core.Translate.FromEnriched
       Mascheya.Core.Translate.FromSource
       Mascheya.Core.Types
   other-modules:

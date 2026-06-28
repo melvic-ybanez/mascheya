@@ -2,12 +2,12 @@ module Mascheya.Core.Parser.ExprParser where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core (Parser, parseMap, (<&>), track, repeat0, matchChar, matchStr)
+import Mascheya.Core.Parser.Core 
 import Mascheya.Core.Parser.Primitives 
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList, repeat)
+import Data.List.NonEmpty (fromList)
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
@@ -31,10 +31,12 @@ arithExpr = toInfix $ term <&> restT
 letExpr :: Parser SExpr
 letExpr = let' <|> appExpr
   where 
-    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces def <&> in'
-    def = (\((v, _), e) -> (v, e)) <$> (var <&> inSpaces0 equals <&> expr)
+    let' = toLet <$> matchStr Lexemes.letKw <&> spaces <&> repeat (definition <&> spaces) <&> in'    
     in' = snd <$> matchStr Lexemes.inKw <&> spaces <&> expr
-    toLet ((_, (var', body)), expr') = SLetExpr $ SLet var' body expr'
+    toLet (((_, _), defSpaces), expr') = SLetExpr $ SLet (fst <$> defSpaces) expr'
+
+definition :: Parser SDef
+definition = (\(((v, _), e), at) -> SDef v e at) <$> (track $ expr <&> inSpaces0 equals <&> expr)
 
 appExpr :: Parser SExpr
 appExpr = toExpr <$> (track $ factor' <&> args')

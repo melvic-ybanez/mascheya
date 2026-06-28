@@ -1,9 +1,10 @@
 module Mascheya.Core.Ast.Core where
   
 import Mascheya.Core.Result (Loc, dummyLoc)
+import Data.List.NonEmpty (NonEmpty)
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
-  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CRec CExpr
+  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet | CDefExpr CDef
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
@@ -17,7 +18,12 @@ data CChar = CChar Char deriving Show
 data CBool = CTrue | CFalse deriving Show
 
 data CLambda = CLambda { param :: CVar, body :: CExpr } deriving Show
-data CApp = CApp { callable :: CExpr, arg :: CExpr, source :: String, appLoc :: Loc } deriving Show
+data CApp = CApp { 
+  callable :: CExpr, 
+  arg :: CExpr, 
+  appSource :: String, 
+  appLoc :: Loc 
+} deriving Show
 
 data CBuiltinFunc = CInfixFunc CInfix | CIfFunc CIf | CListFunc CList deriving Show
 
@@ -30,6 +36,15 @@ data CIf = CIf CExpr CExpr CExpr deriving Show
 data CInfixOp = CArithOp CArith | CCompOp CComp deriving Show
 data CComp = CEqEq | CNotEq | CLt | CLte | CGt | CGte
   deriving Show
+
+data CLet = CLet (NonEmpty CDef) CExpr deriving Show
+
+data CDef = CDef { 
+  lhs :: CExpr, 
+  rhs :: CExpr, 
+  defSource :: String, 
+  defLoc :: Loc 
+} deriving Show
 
 newVar :: String -> Loc -> CExpr
 newVar name = CVarExpr . CVar name

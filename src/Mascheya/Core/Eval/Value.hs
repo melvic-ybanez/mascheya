@@ -14,6 +14,7 @@ data Value s = ThunkVal (Thunk s)
   | ClosureVal (Closure s) 
   | ConstVal Const 
   | ListVal (List s) 
+  | DefVal (Def s)
   | Bottom
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
@@ -26,9 +27,12 @@ data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char | Boo
 
 data List s = ConsVal (Thunk s) (Thunk s) | NilVal
 
+newtype Def s = Def (VEnv s)
+
 type Out s = ResultT (ST s) (Value s)
 
-data PureValue = PureClosureVal PureClosure | PureConstVal Const | PureListVal PureList | PureBottom
+data PureValue = PureClosureVal PureClosure | PureConstVal Const 
+  | PureListVal PureList | PureBottom | PureDef
 
 data PureClosure = PureClosure String CExpr  
 
@@ -38,6 +42,7 @@ instance Display PureValue where
   display (PureClosureVal _) = "<function>"
   display (PureConstVal const') = display const'
   display (PureListVal list) = display list
+  display PureDef = "()"
   display PureBottom = "_|_"
 
 instance Display Const where

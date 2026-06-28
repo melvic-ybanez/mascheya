@@ -7,8 +7,6 @@ import qualified Mascheya.Core.Result as Result
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Mascheya.Core.Display (Display(display))
 import qualified Mascheya.Core.Ast.Source as Source
-import Mascheya.Core.Ast.Enrichments (ELet (ELet), EExpr (ELetExpr))
-import Mascheya.Core.Translate.FromEnriched (fromEExpr)
 
 fromSExpr :: SExpr -> Result CExpr
 fromSExpr (SLitExpr lit) = Result.succeed $ CConstExpr $ case lit of
@@ -29,11 +27,17 @@ fromSExpr (SAppExpr (SApp callable' (h :| t) loc)) = do
   Result.succeed $ foldl' mkCExpr init' rest 
 fromSExpr (SInfixExpr (SInfix arg1 op arg2)) =
   fromSExpr $ SAppExpr $ SApp (SVarExpr op) (arg1 :| [arg2]) (Source.varLoc op)
-fromSExpr (SLetExpr (SLet v b e)) = do
-  ev <- fromSVar v
-  eb <- fromSExpr b
-  ee <- fromSExpr e
-  fromEExpr $ ELetExpr $ ELet ev eb ee
+fromSExpr (SLetExpr (SLet defs expr)) = do
+  cDefs <- sequence $ fromSDef <$> defs
+  cExpr <- fromSExpr expr
+  return $ CLetExpr $ CLet cDefs cExpr
+fromSExpr (SDefExpr sDef) = CDefExpr <$> fromSDef sDef
 
 fromSVar :: SVar -> Result CVar
 fromSVar (SVar name line') = Result.succeed $ CVar name line'
+
+fromSDef :: SDef -> Result CDef
+fromSDef def@(SDef lhs' rhs' loc) = do
+      cLhs <- fromSExpr lhs'
+      cRhs <- fromSExpr rhs'
+      return $ CDef cLhs cRhs (display def) loc

@@ -22,7 +22,7 @@ data Failure = ParseError ParseError Loc | RuntimeError RuntimeError Loc
 
 data ParseError = Invalid String String | Expected String | Eof deriving Show
 
-data RuntimeError = UndefinedVar String | NotAFunction String deriving Show
+data RuntimeError = UndefinedVar String | NotAFunction String | MatchError String deriving Show
 
 data InternalError = TypecheckingFailed deriving Show
 
@@ -66,6 +66,7 @@ instance Display ParseError where
 instance Display RuntimeError where
   display (UndefinedVar name) = "Undefined variable: " ++ name
   display (NotAFunction source) = "Not a function: " ++ source
+  display (MatchError source) = "Pattern match error: " ++ source
 
 instance Display InternalError where
   display TypecheckingFailed = "Typechecker failed to capture a type error"
