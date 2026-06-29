@@ -22,8 +22,8 @@ library
       Mascheya.Core.Lexemes
       Mascheya.Core.Parser
       Mascheya.Core.Parser.Core
-      Mascheya.Core.Parser.ExprParser
       Mascheya.Core.Parser.Primitives
+      Mascheya.Core.Parser.Prog
       Mascheya.Core.Repl
       Mascheya.Core.Result
       Mascheya.Core.Translate

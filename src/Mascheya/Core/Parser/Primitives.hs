@@ -126,6 +126,9 @@ underscore = matchChar Lexemes.underscore
 singleQuote :: Parser Char
 singleQuote = matchChar Lexemes.singleQuote
 
+semicolon :: Parser Char
+semicolon = matchChar Lexemes.semicolon
+
 plusOrMinus :: Parser Char
 plusOrMinus = matchChar Lexemes.plus <|> matchChar Lexemes.minus
 

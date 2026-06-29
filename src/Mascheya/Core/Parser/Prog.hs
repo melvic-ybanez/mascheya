@@ -1,4 +1,4 @@
-module Mascheya.Core.Parser.ExprParser where
+module Mascheya.Core.Parser.Prog where
 
 import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
@@ -7,12 +7,15 @@ import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList)
+import Data.List.NonEmpty (fromList, NonEmpty ((:|)), (<|))
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
   where 
     expr' = compExpr
+
+definition :: Parser SDef
+definition = (\(((v, _), e), at) -> SDef v e at) <$> (track $ expr <&> inSpaces0 equals <&> expr)
 
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA
@@ -31,12 +34,9 @@ arithExpr = toInfix $ term <&> restT
 letExpr :: Parser SExpr
 letExpr = let' <|> appExpr
   where 
-    let' = toLet <$> matchStr Lexemes.letKw <&> spaces <&> repeat (definition <&> spaces) <&> in'    
+    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces defList <&> in'    
     in' = snd <$> matchStr Lexemes.inKw <&> spaces <&> expr
-    toLet (((_, _), defSpaces), expr') = SLetExpr $ SLet (fst <$> defSpaces) expr'
-
-definition :: Parser SDef
-definition = (\(((v, _), e), at) -> SDef v e at) <$> (track $ expr <&> inSpaces0 equals <&> expr)
+    toLet ((_, defs), expr') = SLetExpr $ SLet defs expr'
 
 appExpr :: Parser SExpr
 appExpr = toExpr <$> (track $ factor' <&> args')
@@ -44,7 +44,7 @@ appExpr = toExpr <$> (track $ factor' <&> args')
     factor' = call <|> (inParens $ appExpr)
     call = factor <|> (inParens expr)
     args' = repeat0 arg
-    arg = snd <$> matchChar Lexemes.space <&> call
+    arg = snd <$> spaces <&> call
 
     toExpr ((f, []), _) = f
     toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
@@ -121,6 +121,10 @@ plusOrMinusExpr = trackedCharToVar <$> track plusOrMinus
 
 termOpExpr :: Parser SVar
 termOpExpr = trackedCharToVar <$> track termOp
+
+defList :: Parser (NonEmpty SDef)
+defList = (\(h, t) -> h :| t) <$> (definition <&> 
+  (repeat0 $ snd <$> (inSpaces0 semicolon <&> spaces0 <&> definition)))
 
 trackedCharToVar :: (Char, Loc) -> SVar
 trackedCharToVar (c, l) = SVar [c] l

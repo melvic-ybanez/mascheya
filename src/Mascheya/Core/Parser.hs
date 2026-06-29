@@ -4,13 +4,13 @@
 module Mascheya.Core.Parser (
   module Mascheya.Core.Parser.Core,
   module Mascheya.Core.Parser.Primitives,
-  module Mascheya.Core.Parser.ExprParser,
+  module Mascheya.Core.Parser.Prog,
   parse,
 ) where
 
 import Mascheya.Core.Parser.Core
 import Mascheya.Core.Parser.Primitives
-import Mascheya.Core.Parser.ExprParser
+import Mascheya.Core.Parser.Prog
 
 import Mascheya.Core.Result (Result, parseError, ParseError (Invalid), Loc (Loc))
 import qualified Mascheya.Core.Result as Result

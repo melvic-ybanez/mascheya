@@ -3,8 +3,10 @@ module Mascheya.Core.Ast.Core where
 import Mascheya.Core.Result (Loc, dummyLoc)
 import Data.List.NonEmpty (NonEmpty)
 
+data CProg = CDefProg CDef | CExprProg CExpr deriving Show
+
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
-  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet | CDefExpr CDef
+  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet 
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)

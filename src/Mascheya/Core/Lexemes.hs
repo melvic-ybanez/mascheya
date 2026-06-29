@@ -122,3 +122,6 @@ newline = '\n'
 
 keyWords :: [String]
 keyWords = [letKw, inKw]
+
+semicolon :: Char
+semicolon = ';'

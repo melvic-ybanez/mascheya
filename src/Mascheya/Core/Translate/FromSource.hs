@@ -8,6 +8,10 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Mascheya.Core.Display (Display(display))
 import qualified Mascheya.Core.Ast.Source as Source
 
+fromSProg :: SProg -> Result CProg
+fromSProg (SDefProg def) = CDefProg <$> fromSDef def
+fromSProg (SExprProg expr) = CExprProg <$> fromSExpr expr
+
 fromSExpr :: SExpr -> Result CExpr
 fromSExpr (SLitExpr lit) = Result.succeed $ CConstExpr $ case lit of
   SNumLit numlit -> CNumConst $ case numlit of 
@@ -31,7 +35,6 @@ fromSExpr (SLetExpr (SLet defs expr)) = do
   cDefs <- sequence $ fromSDef <$> defs
   cExpr <- fromSExpr expr
   return $ CLetExpr $ CLet cDefs cExpr
-fromSExpr (SDefExpr sDef) = CDefExpr <$> fromSDef sDef
 
 fromSVar :: SVar -> Result CVar
 fromSVar (SVar name line') = Result.succeed $ CVar name line'
