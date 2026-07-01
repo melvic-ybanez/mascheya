@@ -6,7 +6,7 @@ module Mascheya.Core.Result where
 import Data.List.NonEmpty
 import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
-import Control.Monad.Except (ExceptT, MonadError (throwError))
+import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError))
 import Data.STRef (newSTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
@@ -31,6 +31,12 @@ succeed = Right
 
 succeedT :: Monad m => a -> ResultT m a
 succeedT = return
+
+liftT :: Monad m => Result a -> ResultT m a
+liftT = ExceptT . return
+
+stEitherToIO :: ST RealWorld (Either e a) -> ExceptT e IO a
+stEitherToIO = ExceptT . stToIO
 
 fail :: Failure -> Result a
 fail = Left . singleton

@@ -12,19 +12,23 @@ import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
+eval :: CProg -> VEnv s -> Out s
+eval (CDefProg def) = evalDef def
+eval (CExprProg expr) = evalExpr expr
+
 evalDef :: CDef -> VEnv s -> Out s
 evalDef cDef = \env -> do
   envRef <- newLiftedRef $ Env.extend0 env
   def <- register cDef envRef
   return $ DefVal def
 
-eval :: CExpr -> VEnv s -> Out s
-eval (CVarExpr (CVar name loc')) = maybe error' force . Env.lookup name
+evalExpr :: CExpr -> VEnv s -> Out s
+evalExpr (CVarExpr (CVar name loc')) = maybe error' force . Env.lookup name
   where 
     error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
-eval (CLambdaExpr (CLambda (CVar name _) body')) = 
+evalExpr (CLambdaExpr (CLambda (CVar name _) body')) = 
   Result.succeedT . ClosureVal . Closure name body'
-eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip handleFuncVal env 
+evalExpr (CAppExpr (CApp func arg' source' loc')) = \env -> evalExpr func env >>= flip handleFuncVal env 
   where 
     handleFuncVal (ClosureVal closure@(Closure param' _ funcEnv)) = \callerEnv -> do
       argEnv <- newLiftedRef callerEnv
@@ -35,16 +39,16 @@ eval (CAppExpr (CApp func arg' source' loc')) = \env -> eval func env >>= flip h
       let extendWithParam = Env.extend param' (Thunk argState)
       extendedEnv <- return $ extendWithParam funcEnv
 
-      eval (body closure) extendedEnv
+      evalExpr (body closure) extendedEnv
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
-eval (CLetExpr (CLet defs expr)) = \env -> do
+evalExpr (CLetExpr (CLet defs expr)) = \env -> do
   envRef <- newLiftedRef $ Env.extend0 env
   Def letEnvRef <- foldl' 
     (\accDef def -> accDef >>= \(Def accEnv) -> register def accEnv) 
     (Result.succeedT $ Def envRef) defs
   letEnv <- lift $ readSTRef letEnvRef
-  eval expr letEnv
-eval (CBuiltinFuncExpr builtin) = case builtin of
+  evalExpr expr letEnv
+evalExpr (CBuiltinFuncExpr builtin) = case builtin of
   CInfixFunc (CInfix a op b) -> case op of
     CArithOp arithOp -> case arithOp of
       CPlus -> evalArith (+)
@@ -52,7 +56,7 @@ eval (CBuiltinFuncExpr builtin) = case builtin of
       CTimes -> evalArith (*)
       CDivide -> evalArithWith div (/) (/)
       CModulo -> evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of 
-        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ newInt $ i1 `mod` i2
+        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> evalExpr $ newInt $ i1 `mod` i2
         (_, _) -> constTypeErrorT
 
       where
@@ -76,8 +80,8 @@ eval (CBuiltinFuncExpr builtin) = case builtin of
           (\i -> newBool . comp i) (\f -> newBool . comp f) (\d -> newBool . comp d)
     where
       evalInfixOpWith f = runReaderT $ do
-        aVal <- ReaderT $ eval a
-        bVal <- ReaderT $ eval b
+        aVal <- ReaderT $ evalExpr a
+        bVal <- ReaderT $ evalExpr b
         ReaderT $ f aVal bVal
 
       evalInfix :: (Int -> Int -> CExpr) 
@@ -85,17 +89,17 @@ eval (CBuiltinFuncExpr builtin) = case builtin of
         -> (Double -> Double -> CExpr)
         -> VEnv s -> Out s
       evalInfix fi ff fd = evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
-        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> eval $ fi i1 i2
-        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> eval $ ff f1 f2
-        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> eval $ fd d1 d2
+        ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> evalExpr $ fi i1 i2
+        ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> evalExpr $ ff f1 f2
+        ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> evalExpr $ fd d1 d2
         (Bottom, _) -> returnBottom
         (_, Bottom) -> returnBottom
         (_, _) -> constTypeErrorT
 
-  CIfFunc (CIf cond ifTrue ifFalse) -> \env -> eval cond env >>= flip handle env 
+  CIfFunc (CIf cond ifTrue ifFalse) -> \env -> evalExpr cond env >>= flip handle env 
     where 
-      handle (ConstVal (BoolVal True)) = eval ifTrue
-      handle (ConstVal (BoolVal False)) = eval ifFalse
+      handle (ConstVal (BoolVal True)) = evalExpr ifTrue
+      handle (ConstVal (BoolVal False)) = evalExpr ifFalse
       handle Bottom = returnBottom
       handle _ = constTypeErrorT
   CListFunc CNil -> constSucceedT $ ListVal NilVal
@@ -104,7 +108,7 @@ eval (CBuiltinFuncExpr builtin) = case builtin of
     dh <- newLiftedRef $ Delayed h env
     dt <- newLiftedRef $ Delayed t env
     return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
-eval (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
+evalExpr (CConstExpr const') = constSucceedT $ ConstVal $ eval' const'
   where 
     eval' (CNumConst num) = case num of
       CInt int -> IntVal int
@@ -128,7 +132,7 @@ force (Thunk ref) = lift (readSTRef ref) >>= handleState
     handleState (Ready out) = return out
     handleState (Delayed expr envRef) = do
       env <- lift $ readSTRef envRef
-      val <- eval expr env 
+      val <- evalExpr expr env 
       lift $ writeSTRef ref (Ready val)
       return val
 

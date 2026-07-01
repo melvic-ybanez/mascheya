@@ -4,18 +4,19 @@ import System.IO (hFlush, stdout)
 import System.Exit (die)
 import qualified Mascheya.Core.Eval as Eval
 import Mascheya.Core.Display
-import qualified Mascheya.Core.Eval.Env as Env
 import Control.Monad.Except (runExceptT)
-import Control.Monad.ST (runST)
+import Control.Monad.ST (RealWorld)
 import Mascheya.Core.Eval (reify)
 import qualified Mascheya.Core.Parser as Parser
-import qualified Mascheya.Core.Eval.Builtins as Builtins
 import Mascheya.Core.Parser (Parser, word, (<&>), matchChar, spaces0, spaces)
 import Data.List (stripPrefix, intercalate)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (lines)
 import Data.Char (isSpace)
 import qualified Mascheya.Core.Translate as Translate
+import Mascheya.Core.Eval.Value (VEnv, Value (DefVal), Def (Def))
+import Data.STRef (readSTRef)
+import qualified Mascheya.Core.Result as Result
 
 data State = State {
   lineMode :: LineMode
@@ -23,39 +24,47 @@ data State = State {
 
 data LineMode = Single | Multi deriving Eq
 
-repl :: State -> IO ()
-repl state = do
+repl :: State -> VEnv RealWorld -> IO ()
+repl state env = do
   putStr "mascheya> "
   hFlush stdout
   rawInput <- if lineMode state == Single then getLine else getMultiLine
   case trim rawInput of
-    [] -> loop
+    [] -> repl state env
     ":q" -> die "Bye!"
     input -> case stripPrefix ":set" input of
-      Nothing -> do
-        putStrLn $ handleResult $ run input
-        loop
+      Nothing -> do 
+        result <- runExceptT $ run input
+        newEnv <- handleResult result
+        repl state newEnv
       Just rest -> case Parser.parse setArgParser rest of
         Left e -> report $ "Invalid argument pair. " ++ display e
         Right ("line", mode) -> case mode of
-          "single" -> repl state { lineMode = Single }
-          "multi" -> repl state { lineMode = Multi }
+          "single" -> repl state { lineMode = Single } env
+          "multi" -> repl state { lineMode = Multi } env
           invalid -> report $ "Invalid line mode: " ++ invalid
         Right (arg, _) -> report $ "Invalid argument: " ++ arg
   where 
     run input = do 
-      sourceExpr <- Parser.parse Parser.expr input
-      coreExpr <- Translate.fromSExpr sourceExpr
-      runST $ runExceptT $ do
-        env <- Builtins.init Env.empty
-        val <- Eval.eval coreExpr env
-        reify val
+      sourceProg <- Result.liftT $ Parser.parse Parser.program input
+      coreProg <- Result.liftT $ Translate.fromSProg sourceProg
+      val <- Result.stEitherToIO $ runExceptT $ Eval.eval coreProg env
+      newEnv <- Result.stEitherToIO $ case val of
+        DefVal (Def newEnvRef) -> do
+          newEnv <- readSTRef newEnvRef
+          return $ Result.succeed newEnv
+        _ -> return $ Result.succeed env 
+      reified <- Result.stEitherToIO $ runExceptT $ reify val
+      return (reified, newEnv)
     
-    handleResult (Left error') = display error'
-    handleResult (Right stVal) = display stVal
+    handleResult (Left error') = do
+      putStrLn $ display error'
+      return env
+    handleResult (Right (val, newEnv)) = do
+      putStrLn $ display val
+      return newEnv
     
-    report msg = (putStrLn msg) >>= const loop
-    loop = repl state
+    report msg = putStrLn msg >> repl state env
 
     getMultiLine = recurse []
       where

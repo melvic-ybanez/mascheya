@@ -7,7 +7,13 @@ import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList, NonEmpty ((:|)), (<|))
+import Data.List.NonEmpty (fromList, NonEmpty ((:|)))
+
+program :: Parser SProg
+program = defProg <|> exprProg
+  where
+    defProg = SDefProg <$> definition
+    exprProg = SExprProg <$> expr
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
