@@ -7,7 +7,7 @@ import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList, NonEmpty ((:|)))
+import Data.List.NonEmpty (fromList, NonEmpty)
 
 program :: Parser SProg
 program = defProg <|> exprProg
@@ -18,10 +18,15 @@ program = defProg <|> exprProg
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
   where 
-    expr' = compExpr
+    expr' = lambdaExpr <|> compExpr
+    lambdaExpr = SLambdaExpr <$> lambda
 
 definition :: Parser SDef
 definition = (\(((v, _), e), at) -> SDef v e at) <$> (track $ expr <&> inSpaces0 equals <&> expr)
+
+lambda :: Parser SLambda
+lambda = (\(((_, params), _), body) -> SLambda params body)
+  <$> matchChar Lexemes.lambdaSymbol <&> repSepBy (repeat spaces) var <&> inSpaces rightArrow <&> expr
 
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA
@@ -129,8 +134,7 @@ termOpExpr :: Parser SVar
 termOpExpr = trackedCharToVar <$> track termOp
 
 defList :: Parser (NonEmpty SDef)
-defList = (\(h, t) -> h :| t) <$> (definition <&> 
-  (repeat0 $ snd <$> (inSpaces0 semicolon <&> spaces0 <&> definition)))
+defList = repSepBy (inSpaces0 semicolon) definition
 
 trackedCharToVar :: (Char, Loc) -> SVar
 trackedCharToVar (c, l) = SVar [c] l

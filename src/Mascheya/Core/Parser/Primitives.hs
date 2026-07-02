@@ -85,6 +85,9 @@ word = toList <$> repeat letter
 space :: Parser Char
 space = satisfyExpect isSpace "space character"
 
+rightArrow :: Parser String
+rightArrow = matchStr Lexemes.rightArrow
+
 ascii :: Parser Char
 ascii = satisfyExpect isAscii "control character"
 

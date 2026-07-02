@@ -35,6 +35,11 @@ fromSExpr (SLetExpr (SLet defs expr)) = do
   cDefs <- sequence $ fromSDef <$> defs
   cExpr <- fromSExpr expr
   return $ CLetExpr $ CLet cDefs cExpr
+fromSExpr (SLambdaExpr (SLambda params body')) = do
+  cParams <- sequence $ fromSVar <$> params
+  cExpr <- fromSExpr body'
+  let mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc 
+  Result.succeed $ foldr mkLambdaExpr cExpr cParams
 
 fromSVar :: SVar -> Result CVar
 fromSVar (SVar name line') = Result.succeed $ CVar name line'

@@ -8,7 +8,13 @@ import Data.List (intercalate)
 data SProg = SDefProg SDef | SExprProg SExpr deriving Show
 
 data SExpr = SVarExpr SVar | SAppExpr SApp | SLitExpr SLit 
-  | SInfixExpr SInfix | SLetExpr SLet deriving Show
+  | SInfixExpr SInfix | SLetExpr SLet | SLambdaExpr SLambda deriving Show
+
+-- | Lambda expression.
+--
+-- Note: A source-level lambda can have multiple params, but it gets converted into
+-- a curried single-param lambda during the translation phase
+data SLambda = SLambda (NonEmpty SVar) SExpr deriving Show
 
 data SVar = SVar { varName :: String, varLoc :: Loc } deriving Show
 data SLit = SNumLit SNum | SCharLit SChar | SBoolLit SBool deriving Show
@@ -57,6 +63,8 @@ instance Display SExpr where
     where 
       newlineIndent = Lexemes.newline : [Lexemes.space, Lexemes.space]
       displayDefs = intercalate newlineIndent $ fmap display $ display $ SSV $ toList defs
+  display (SLambdaExpr (SLambda params body)) = intercalate [Lexemes.space] 
+    [[Lexemes.lambdaSymbol], display (SSV $ toList params), display body]
 
 instance Display SVar where
   display (SVar name _) = name

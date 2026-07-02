@@ -27,6 +27,9 @@ repeat pa = pa >>= \a -> Parser {
     Right (as, rest) -> Result.succeed (a <| as, rest)
 }
 
+repSepBy :: Parser d -> Parser a -> Parser (NonEmpty a)
+repSepBy pd pa = (\(h, t) -> h :| t) <$> pa <&> (repeat0 $ snd <$> pd <&> pa)
+
 fail :: ParseError -> Loc -> Parser a
 fail err = Parser . const . parseError err
 
