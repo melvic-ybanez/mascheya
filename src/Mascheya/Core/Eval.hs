@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Mascheya.Core.Eval where
 
@@ -124,7 +125,12 @@ register (CDef lhs' rhs' source loc') = \envRef -> case lhs' of
     rhsState <- newLiftedRef $ Delayed rhs' envRef
     lift $ modifySTRef envRef (Env.assign name $ Thunk rhsState)
     return $ Def envRef
-  _ -> Result.failT $ RuntimeError (MatchError source) loc'
+  CAppExpr CApp { callable, arg } -> case arg of
+    CVarExpr cVar -> register (CDef callable (CLambdaExpr $ CLambda cVar rhs') source loc') envRef
+    _ -> matchError
+  _ -> matchError
+  where
+    matchError = Result.failT $ RuntimeError (MatchError source) loc'
 
 force :: Thunk s -> Out s
 force (Thunk ref) = lift (readSTRef ref) >>= handleState
