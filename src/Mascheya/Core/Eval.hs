@@ -127,7 +127,9 @@ register (CDef lhs' rhs' source loc') = \envRef -> case lhs' of
     return $ Def envRef
   CAppExpr CApp { callable, arg } -> case arg of
     CVarExpr cVar -> register (CDef callable (CLambdaExpr $ CLambda cVar rhs') source loc') envRef
+    -- TODO: For now, we throw an error because pattern matching is not supported yet
     _ -> matchError
+    -- TODO: For now, we throw an error because pattern matching is not supported yet
   _ -> matchError
   where
     matchError = Result.failT $ RuntimeError (MatchError source) loc'
