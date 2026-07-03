@@ -26,12 +26,13 @@ data LineMode = Single | Multi deriving Eq
 
 repl :: State -> VEnv RealWorld -> IO ()
 repl state env = do
-  putStr "mascheya> "
+  putStr $ brightCyanStr "mascheya> " 
   hFlush stdout
+
   rawInput <- if lineMode state == Single then getLine else getMultiLine
   case trim rawInput of
     [] -> repl state env
-    ":q" -> die "Bye!"
+    ":q" -> die $ brightCyanStr "Bye!"
     input -> case stripPrefix ":set" input of
       Nothing -> do 
         result <- runExceptT $ run input
@@ -58,13 +59,13 @@ repl state env = do
       return (reified, newEnv)
     
     handleResult (Left error') = do
-      putStrLn $ display error'
+      putErrorLn $ display error'
       return env
     handleResult (Right (val, newEnv)) = do
-      putStrLn $ display val
+      putSuccessLn $ display val
       return newEnv
     
-    report msg = putStrLn msg >> repl state env
+    report msg = putErrorLn msg >> repl state env
 
     getMultiLine = recurse []
       where
@@ -80,3 +81,25 @@ repl state env = do
 setArgParser :: Parser (String, String)
 setArgParser = (\((((_, arg), _), val), _) -> (arg, val)) 
   <$> (spaces <&> word <&> matchChar '=' <&> word <&> spaces0)
+
+putInfoLn :: String -> IO ()
+putInfoLn = putStrLn . brightCyanStr
+
+putErrorLn :: String -> IO ()
+putErrorLn = putStrLn . brightRedStr
+
+putSuccessLn :: String -> IO ()
+putSuccessLn = putStrLn . brightGreenStr
+
+-- | Color a string using ANSI escape codes
+coloredStr :: Int -> String -> String
+coloredStr i msg = "\ESC[" ++ show i ++ "m" ++ msg ++ "\ESC[0m"
+
+brightCyanStr :: String -> String
+brightCyanStr = coloredStr 96
+
+brightRedStr :: String -> String
+brightRedStr = coloredStr 91
+
+brightGreenStr :: String -> String
+brightGreenStr = coloredStr 92
