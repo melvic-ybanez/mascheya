@@ -13,6 +13,7 @@ build-type:     Simple
 library
   exposed-modules:
       Mascheya.Core.Ast.Core
+      Mascheya.Core.Ast.Enriched
       Mascheya.Core.Ast.Source
       Mascheya.Core.Display
       Mascheya.Core.Eval

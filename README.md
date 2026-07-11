@@ -1,7 +1,7 @@
 # Mascheya
 
 Mascheya is a polymorphically typed functional programming language based on the typed lambda 
-calculus. Its design is inpired primarily by Haskell, Scala, and Miranda. 
+calculus. Its design is inspired primarily by Haskell, Scala, and Miranda. 
 It is currently being written in Haskell.
 
 At the time of this writing, Mascheya's static typechecker hasn't been implemented yet, so it will currently
