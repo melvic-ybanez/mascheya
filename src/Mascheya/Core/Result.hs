@@ -59,6 +59,9 @@ formatMsgWithLoc msg loc = msg ++ " at " ++ display loc ++ ". "
 dummyLoc :: Loc
 dummyLoc = Loc 1
 
+matchErrorT :: Monad m => String -> Loc -> ResultT m a
+matchErrorT source = failT . RuntimeError (MatchError source)
+
 instance Display Failure where
   display (ParseError error loc) = formatMsgWithLoc "Parser Error" loc ++ display error
   display (RuntimeError error loc) = formatMsgWithLoc "Runtime Error" loc ++ display error

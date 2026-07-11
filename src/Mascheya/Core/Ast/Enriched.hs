@@ -3,7 +3,9 @@ module Mascheya.Core.Ast.Enriched where
 import Mascheya.Core.Ast.Core (CExpr, CVar, CConst)
 import Data.List.NonEmpty (NonEmpty)
 
-data EExpr = ECoreExpr CExpr | EDataExpr EData  | EData deriving Show
+data EExpr = ECoreExpr CExpr | EDataExpr EData  | EData 
+  | EPatLambdaExpr EPatLambda | EPatOrExpr EPatOr
+  deriving Show
 
 data EData = EProductData EProduct | ESumData ESum deriving Show
 
@@ -17,3 +19,7 @@ data EType = EType String deriving Show
 
 data EPattern = EVarPat CVar | EConstPat CConst 
   | EConstructorPat EConstructor [EPattern] deriving Show
+
+data EPatLambda = EPatLambda EPattern EExpr deriving Show
+
+data EPatOr = EPatOr EExpr EExpr deriving Show
