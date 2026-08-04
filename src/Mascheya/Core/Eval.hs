@@ -12,7 +12,6 @@ import Control.Monad.Reader (ReaderT (ReaderT, runReaderT) )
 import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
-import Mascheya.Core.Display (Display(display))
 
 eval :: CProg -> VEnv s -> Out s
 eval (CDefNelProg (CDefNel defNel)) = \env -> 
@@ -86,7 +85,7 @@ evalConst const' = ConstVal $ case const' of
   CUnitConst -> Unit
 
 applyPattern :: Closure s -> CExpr -> String -> VEnv s -> Out s
-applyPattern (Closure paramPat body funcEnv) arg' = \source callerEnv -> do
+applyPattern (Closure paramPat body funcEnv) arg' source callerEnv = do
   case paramPat of 
     CVarPat (CVar paramName _) -> do
       argEnv <- newLiftedRef callerEnv
