@@ -13,7 +13,6 @@ import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 import Mascheya.Core.Display (Display(display))
-import qualified Mascheya.Core.Translate.FromCore as FromCore
 
 eval :: CProg -> VEnv s -> Out s
 eval (CDefNelProg (CDefNel defNel)) = \env -> 
@@ -32,7 +31,7 @@ evalExpr (CLambdaExpr (CLambda pattern body')) =
 evalExpr (CAppExpr (CApp func arg' source' loc')) = \env -> 
   evalExpr func env >>= flip handleFuncVal env 
   where 
-    handleFuncVal (ClosureVal closure) = applyPattern closure arg'
+    handleFuncVal (ClosureVal closure) = applyPattern closure arg' source'
     handleFuncVal MatchFailVal = constSucceedT MatchFailVal
     handleFuncVal _ = constFailT $ RuntimeError (NotAFunction source') loc'
 evalExpr (CLetExpr (CLet defs expr)) = \env -> do
@@ -86,8 +85,8 @@ evalConst const' = ConstVal $ case const' of
   CBoolConst CFalse -> BoolVal False
   CUnitConst -> Unit
 
-applyPattern :: Closure s -> CExpr -> VEnv s -> Out s
-applyPattern (Closure paramPat body funcEnv) arg' = \callerEnv -> do
+applyPattern :: Closure s -> CExpr -> String -> VEnv s -> Out s
+applyPattern (Closure paramPat body funcEnv) arg' = \source callerEnv -> do
   case paramPat of 
     CVarPat (CVar paramName _) -> do
       argEnv <- newLiftedRef callerEnv
@@ -114,9 +113,8 @@ applyPattern (Closure paramPat body funcEnv) arg' = \callerEnv -> do
               evalExpr (foldl' mkExpr init' $ unit : argConstructors) callerEnv
           | otherwise -> return MatchFailVal
           where 
-            reducedLambda = fromLambdaDetails pats body
-            source = display $ FromCore.toSourceExpr body
-            init' = CAppExpr $ CApp reducedLambda unit source loc'
+            foldedLambda = fromLambdaDetails pats body
+            init' = CAppExpr $ CApp foldedLambda unit source loc'
             mkExpr acc expr = CAppExpr $ CApp acc expr source loc'
         _ -> return MatchFailVal
 
