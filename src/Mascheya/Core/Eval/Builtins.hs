@@ -36,6 +36,6 @@ initInfix opLexeme infixOp env = fmap (\ref -> Env.assign opLexeme (Thunk ref) e
   where 
     a = newDummyVar "a"
     b = newDummyVar "b"
-    outerClosure = CLambdaExpr $ CLambda a innerClosure
-    innerClosure = CLambdaExpr $ CLambda b $ CBuiltinFuncExpr 
+    outerClosure = CLambdaExpr $ CLambda (CVarPat a) innerClosure
+    innerClosure = CLambdaExpr $ CLambda (CVarPat b) $ CBuiltinFuncExpr 
       $ CInfixFunc $ CInfix (CVarExpr a) infixOp (CVarExpr b)

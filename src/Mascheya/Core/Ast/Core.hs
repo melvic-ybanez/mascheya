@@ -2,16 +2,18 @@ module Mascheya.Core.Ast.Core where
   
 import Mascheya.Core.Result (Loc, dummyLoc)
 import Data.List.NonEmpty (NonEmpty)
+import qualified Mascheya.Core.Lexemes as Lexemes
 
-data CProg = CDefProg CDef | CExprProg CExpr deriving Show
+data CProg = CDefNelProg CDefNel | CExprProg CExpr deriving Show
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
   | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet 
+  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottom
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
 
-data CConst = CNumConst CNumeric | CCharConst CChar | CBoolConst CBool deriving Show
+data CConst = CNumConst CNumeric | CCharConst CChar | CBoolConst CBool | CUnitConst deriving Show
 
 data CNumeric = CInt Int | CFloat Float | CDouble Double deriving Show
 
@@ -19,10 +21,10 @@ data CChar = CChar Char deriving Show
 
 data CBool = CTrue | CFalse deriving Show
 
-data CLambda = CLambda { param :: CVar, body :: CExpr } deriving Show
+data CLambda = CLambda { param :: CPat, body :: CExpr } deriving Show
 data CApp = CApp { 
-  callable :: CExpr, 
-  arg :: CExpr, 
+  appCallable :: CExpr, 
+  appArg :: CExpr, 
   appSource :: String, 
   appLoc :: Loc 
 } deriving Show
@@ -41,12 +43,25 @@ data CComp = CEqEq | CNotEq | CLt | CLte | CGt | CGte
 
 data CLet = CLet (NonEmpty CDef) CExpr deriving Show
 
+newtype CDefNel = CDefNel (NonEmpty CDef) deriving Show
+
 data CDef = CDef { 
-  lhs :: CExpr, 
-  rhs :: CExpr, 
-  defSource :: String, 
-  defLoc :: Loc 
+  defName :: CVar,
+  defRhs :: CExpr, 
+  defSource :: String
 } deriving Show
+
+data CProd = CProd String [CExpr] deriving Show
+
+data CConstructor = CConstructor String Loc deriving Show
+
+data CPat = CVarPat CVar | CConstPat CConst
+  | CConstructorPat CConstructor [CPat] deriving Show
+
+data COrElse = COrElse CExpr CExpr Loc deriving Show 
+
+unit :: CExpr
+unit = CProdExpr $ CProd Lexemes.unit []
 
 newVar :: String -> Loc -> CExpr
 newVar name = CVarExpr . CVar name
@@ -54,7 +69,7 @@ newVar name = CVarExpr . CVar name
 newDummyVar :: String -> CVar
 newDummyVar = flip CVar dummyLoc
 
-newLambda :: CVar -> CExpr -> CExpr
+newLambda :: CPat -> CExpr -> CExpr
 newLambda param' = CLambdaExpr . CLambda param'
 
 newInt :: Int -> CExpr
@@ -73,3 +88,8 @@ newBool :: Bool -> CExpr
 newBool b = CConstExpr $ CBoolConst $ case b of 
   True -> CTrue
   False -> CFalse
+
+fromLambdaDetails :: [CPat] -> CExpr -> CExpr
+fromLambdaDetails patterns = flip (foldr mkLambdaExpr) patterns
+  where 
+    mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc 

@@ -28,7 +28,10 @@ repeat pa = pa >>= \a -> Parser {
 }
 
 repSepBy :: Parser d -> Parser a -> Parser (NonEmpty a)
-repSepBy pd pa = (\(h, t) -> h :| t) <$> pa <&> (repeat0 $ snd <$> pd <&> pa)
+repSepBy pd pa = (\(h, t) -> h :| t) <$> pa <&> repSepBy0 pd pa
+
+repSepBy0 :: Parser d -> Parser a -> Parser [a]
+repSepBy0 pd pa = repeat0 $ snd <$> pd <&> pa
 
 fail :: ParseError -> Loc -> Parser a
 fail err = Parser . const . parseError err

@@ -13,10 +13,11 @@ import Data.List (stripPrefix, intercalate)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (lines)
 import Data.Char (isSpace)
-import qualified Mascheya.Core.Translate as Translate
-import Mascheya.Core.Eval.Value (VEnv, Value (DefVal), Def (Def))
+import Mascheya.Core.Eval.Value (VEnv, Value (DefNelVal), Def (Def))
 import Data.STRef (readSTRef)
 import qualified Mascheya.Core.Result as Result
+import qualified Mascheya.Core.Translate as Translate
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 data State = State {
   lineMode :: LineMode
@@ -48,14 +49,14 @@ repl state env = do
   where 
     run input = do 
       sourceProg <- Result.liftT $ Parser.parse Parser.program input
-      coreProg <- Result.liftT $ Translate.fromSProg sourceProg
+      coreProg <- Result.liftT $ Translate.toCoreProg sourceProg
       val <- Result.stEitherToIO $ runExceptT $ Eval.eval coreProg env
       newEnv <- Result.stEitherToIO $ case val of
-        DefVal (Def newEnvRef) -> do
+        DefNelVal ((Def newEnvRef) :| _) -> do
           newEnv <- readSTRef newEnvRef
           return $ Result.succeed newEnv
         _ -> return $ Result.succeed env 
-      reified <- Result.stEitherToIO $ runExceptT $ reify val
+      reified <- Result.stEitherToIO $ runExceptT $ reify val newEnv
       return (reified, newEnv)
     
     handleResult (Left error') = do

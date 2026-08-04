@@ -125,3 +125,12 @@ keyWords = [letKw, inKw]
 
 semicolon :: Char
 semicolon = ';'
+
+dataKw :: String
+dataKw = "data"
+
+unit :: String
+unit = "()"
+
+bottom :: String
+bottom = "_|_"

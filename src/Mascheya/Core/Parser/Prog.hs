@@ -7,12 +7,12 @@ import Mascheya.Core.Parser.Primitives
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Prelude hiding (repeat)
 import Mascheya.Core.Result (Loc)
-import Data.List.NonEmpty (fromList, NonEmpty)
+import Data.List.NonEmpty (fromList)
 
 program :: Parser SProg
-program = defProg <|> exprProg
+program = defListProg <|> exprProg
   where
-    defProg = SDefProg <$> definition
+    defListProg = SDefNelProg <$> defNel
     exprProg = SExprProg <$> expr
 
 expr :: Parser SExpr
@@ -22,11 +22,20 @@ expr = expr' <|> inParens expr'
     lambdaExpr = SLambdaExpr <$> lambda
 
 definition :: Parser SDef
-definition = (\(((v, _), e), at) -> SDef v e at) <$> (track $ expr <&> inSpaces0 equals <&> expr)
+definition = (\(((v, ps), _), rhs) -> SDef v ps rhs) 
+  <$> (var <&> params <&> inSpaces0 equals <&> expr)
+  where 
+    params = repSepBy0 spaces pattern
 
 lambda :: Parser SLambda
 lambda = (\(((_, params), _), body) -> SLambda params body)
-  <$> matchChar Lexemes.lambdaSymbol <&> repSepBy (repeat spaces) var <&> inSpaces rightArrow <&> expr
+  <$> matchChar Lexemes.lambdaSymbol 
+  <&> repSepBy spaces pattern 
+  <&> inSpaces rightArrow 
+  <&> expr
+
+pattern :: Parser SPat
+pattern = SVarPat <$> var
 
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA
@@ -45,7 +54,7 @@ arithExpr = toInfix $ term <&> restT
 letExpr :: Parser SExpr
 letExpr = let' <|> appExpr
   where 
-    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces defList <&> in'    
+    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces defNel <&> in'    
     in' = snd <$> matchStr Lexemes.inKw <&> spaces <&> expr
     toLet ((_, defs), expr') = SLetExpr $ SLet defs expr'
 
@@ -54,8 +63,7 @@ appExpr = toExpr <$> (track $ factor' <&> args')
   where 
     factor' = call <|> (inParens $ appExpr)
     call = factor <|> (inParens expr)
-    args' = repeat0 arg
-    arg = snd <$> spaces <&> call
+    args' = repSepBy0 spaces call
 
     toExpr ((f, []), _) = f
     toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
@@ -133,8 +141,8 @@ plusOrMinusExpr = trackedCharToVar <$> track plusOrMinus
 termOpExpr :: Parser SVar
 termOpExpr = trackedCharToVar <$> track termOp
 
-defList :: Parser (NonEmpty SDef)
-defList = repSepBy (inSpaces0 semicolon) definition
+defNel :: Parser SDefNel
+defNel = SDefNel <$> repSepBy (inSpaces0 semicolon) definition
 
 trackedCharToVar :: (Char, Loc) -> SVar
 trackedCharToVar (c, l) = SVar [c] l

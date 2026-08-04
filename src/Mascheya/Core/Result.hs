@@ -12,19 +12,21 @@ import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
 type Result = Either FailureNel 
-type ResultT = ExceptT FailureNel 
+type ResultT = ExceptT FailureNel
 type FailureNel = NonEmpty Failure
 
-newtype Loc = Loc { line :: Int } deriving (Show, Eq)
+newtype Loc = Loc { line :: Int } deriving (Show, Eq, Ord)
 
 data Failure = ParseError ParseError Loc | RuntimeError RuntimeError Loc
-  | InternalError InternalError deriving Show
+  | InternalError InternalError | TranslationError TranslationError deriving Show
 
 data ParseError = Invalid String String | Expected String | Eof deriving Show
 
-data RuntimeError = UndefinedVar String | NotAFunction String | MatchError String deriving Show
+data RuntimeError = UndefinedVar String | NotAFunction String | MatchError deriving Show
 
 data InternalError = TypecheckingFailed deriving Show
+
+data TranslationError = UnableToTranslate String Loc deriving Show
 
 succeed :: a -> Result a
 succeed = Right 
@@ -59,13 +61,12 @@ formatMsgWithLoc msg loc = msg ++ " at " ++ display loc ++ ". "
 dummyLoc :: Loc
 dummyLoc = Loc 1
 
-matchErrorT :: Monad m => String -> Loc -> ResultT m a
-matchErrorT source = failT . RuntimeError (MatchError source)
-
 instance Display Failure where
   display (ParseError error loc) = formatMsgWithLoc "Parser Error" loc ++ display error
   display (RuntimeError error loc) = formatMsgWithLoc "Runtime Error" loc ++ display error
   display (InternalError error) = "Internal Error" ++ " " ++ display error  -- TODO: Format this too
+  display (TranslationError (UnableToTranslate error loc)) = formatMsgWithLoc "Translation Error" loc
+    ++ error
 
 instance Display ParseError where
   display (Invalid expected source) = "Invalid " ++ expected ++ ": " ++ source
@@ -75,7 +76,7 @@ instance Display ParseError where
 instance Display RuntimeError where
   display (UndefinedVar name) = "Undefined variable: " ++ name
   display (NotAFunction source) = "Not a function: " ++ source
-  display (MatchError source) = "Pattern match error: " ++ source
+  display (MatchError) = "Pattern match error."
 
 instance Display InternalError where
   display TypecheckingFailed = "Typechecker failed to capture a type error"
