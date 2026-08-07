@@ -57,20 +57,23 @@ toCoreDefNel (SDefNel defNel) = do
             COrElseExpr $ COrElse orElse (mkApp params' cDef) at
           mkApp (ph :| pt) (CDef (CVar name at) rhs _) = CAppExpr $ foldl' 
             (\app param' -> CApp (CAppExpr app) param' name at)
-            (CApp rhs ph name at) 
-            pt
+            (CApp rhs (CVarExpr ph) name at) 
+            $ fmap CVarExpr pt
       
       multiDefToSingle (def :| [], []) = Result.succeed def
       multiDefToSingle ((CDef (CVar varName' varLoc') _ _) :| _, []) = Result.fail
         $ TranslationError $ UnableToTranslate ("Multiple definitions for " ++ varName')
         $ varLoc'
-      multiDefToSingle (defs@((CDef name _ _) :| _), params) = Result.succeed
-        $ CDef name (multiDefToOrElse defs $ NonEmpty.fromList params) 
+      multiDefToSingle (defs@((CDef name _ _) :| _), params) = do
+        let lambdaBody = multiDefToOrElse defs $ NonEmpty.fromList params
+            paramPats = fmap CVarPat params
+            lambda = fromLambdaDetails paramPats lambdaBody
+        return $ CDef name lambda
           $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
       
       mergedDefs = NonEmpty.fromList $ multiDefToSingle <$> defParamsMap
         where 
-          lenToParams len locs = fmap (\(l, at) -> CVarExpr $ CVar ('a' : show l) at) 
+          lenToParams len locs = fmap (\(l, at) -> CVar ('a' : show l) at) 
             $ zip [1..len] (NonEmpty.toList locs)
           defParamsMap = do
             (cDefs, paramLen) <- zip cDefGroups perGroupParamLens
