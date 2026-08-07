@@ -103,8 +103,8 @@ applyPattern (Closure paramPat body funcEnv) arg' source = do
       extendedEnv <- return $ extendWithParam funcEnv
 
       local (const extendedEnv) $ evalExpr body
-    CConstPat _ -> do 
-      pVal <- evalExpr arg'
+    CConstPat param' -> do 
+      pVal <- evalExpr $ CConstExpr param'
       argVal <- evalExpr arg'
       case (pVal, argVal) of   
         (_, BottomVal) -> liftSucceedT BottomVal
