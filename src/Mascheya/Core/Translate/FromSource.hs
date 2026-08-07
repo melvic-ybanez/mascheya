@@ -45,8 +45,9 @@ toCoreExpr (SConstructorExpr constr) = Result.succeed $ CConstructorExpr $ toCor
 toCoreDefNel :: SDefNel -> Result CDefNel
 toCoreDefNel (SDefNel defNel) = do
   let defGroups = group $ sortOn Source.defName defNel
-  _ <- if all ((\(h :| t) -> all (== h) t) . fmap (length . defParams)) defGroups
-    then Result.succeed ()
+      paramLens = fmap (fmap (length . defParams)) defGroups
+  perGroupParamLens <- if all ((\(h :| t) -> all (== h) t)) paramLens
+    then Result.succeed $ fmap NonEmpty.head paramLens 
     else Result.fail $ TranslationError $ UnableToTranslate "Number of params are not the same"
       $ Source.varLoc $ Source.defName $ NonEmpty.head defNel 
   cDefGroups <- sequence $ sequence . fmap toCoreDef <$> defGroups
@@ -58,19 +59,24 @@ toCoreDefNel (SDefNel defNel) = do
             (\app param' -> CApp (CAppExpr app) param' name at)
             (CApp rhs ph name at) 
             pt
-      multiDefToSingle (defs@((CDef name _ _) :| _), params) = 
-        CDef name (multiDefToOrElse defs params) 
+      
+      multiDefToSingle (def :| [], []) = Result.succeed def
+      multiDefToSingle ((CDef (CVar varName' varLoc') _ _) :| _, []) = Result.fail
+        $ TranslationError $ UnableToTranslate ("Multiple definitions for " ++ varName')
+        $ varLoc'
+      multiDefToSingle (defs@((CDef name _ _) :| _), params) = Result.succeed
+        $ CDef name (multiDefToOrElse defs $ NonEmpty.fromList params) 
           $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
+      
       mergedDefs = NonEmpty.fromList $ multiDefToSingle <$> defParamsMap
         where 
-          lenToParams len ats = NonEmpty.fromList 
-            $ fmap (\(l, at) -> CVarExpr $ CVar ('a' : show l) at) 
-            $ zip [1..len] (NonEmpty.toList ats)
+          lenToParams len locs = fmap (\(l, at) -> CVarExpr $ CVar ('a' : show l) at) 
+            $ zip [1..len] (NonEmpty.toList locs)
           defParamsMap = do
-            cDefs <- cDefGroups
+            (cDefs, paramLen) <- zip cDefGroups perGroupParamLens
             let locs = fmap (Core.defName >>> Core.varLoc) cDefs
-            return (cDefs, lenToParams (length cDefs) locs)
-  return $ CDefNel mergedDefs
+            return (cDefs, lenToParams paramLen locs)
+  fmap CDefNel $ sequence mergedDefs
 
 toCoreConst :: SLit -> CConst
 toCoreConst lit = case lit of
