@@ -18,9 +18,11 @@ import Data.STRef (readSTRef)
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Translate as Translate
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Control.Monad.Reader (ReaderT(runReaderT))
 
 data State = State {
   lineMode :: LineMode
+  -- TODO: Add more states here
 }
 
 data LineMode = Single | Multi deriving Eq
@@ -48,15 +50,16 @@ repl state env = do
         Right (arg, _) -> report $ "Invalid argument: " ++ arg
   where 
     run input = do 
+      let readerToIO eval = Result.stEitherToIO . runExceptT . runReaderT eval
       sourceProg <- Result.liftT $ Parser.parse Parser.program input
       coreProg <- Result.liftT $ Translate.toCoreProg sourceProg
-      val <- Result.stEitherToIO $ runExceptT $ Eval.eval coreProg env
+      val <- readerToIO (Eval.eval coreProg) env
       newEnv <- Result.stEitherToIO $ case val of
         DefNelVal ((Def newEnvRef) :| _) -> do
           newEnv <- readSTRef newEnvRef
           return $ Result.succeed newEnv
         _ -> return $ Result.succeed env 
-      reified <- Result.stEitherToIO $ runExceptT $ reify val newEnv
+      reified <- readerToIO (reify val) newEnv
       return (reified, newEnv)
     
     handleResult (Left error') = do

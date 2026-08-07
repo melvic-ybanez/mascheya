@@ -13,6 +13,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 import Data.List (intercalate)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import qualified Mascheya.Core.Ast.Core as Core
+import Control.Arrow ((>>>))
 
 toCoreProg :: SProg -> Result CProg
 toCoreProg (SDefNelProg sDefNel) = CDefNelProg <$> toCoreDefNel sDefNel
@@ -48,7 +49,7 @@ toCoreDefNel (SDefNel defNel) = do
     then Result.succeed ()
     else Result.fail $ TranslationError $ UnableToTranslate "Number of params are not the same"
       $ Source.varLoc $ Source.defName $ NonEmpty.head defNel 
-  cDefs <- sequence $ sequence . fmap toCoreDef <$> defGroups
+  cDefGroups <- sequence $ sequence . fmap toCoreDef <$> defGroups
   let multiDefToOrElse (dh :| dt) params = foldl' (combine params) (mkApp params dh) dt
         where 
           combine params' orElse cDef@(CDef (CVar _ at) _ _) = 
@@ -63,10 +64,12 @@ toCoreDefNel (SDefNel defNel) = do
       mergedDefs = NonEmpty.fromList $ multiDefToSingle <$> defParamsMap
         where 
           lenToParams len ats = NonEmpty.fromList 
-            $ (\(l, at) -> CVarExpr $ CVar ('a' : show l) at) 
-            <$> zip [1..len] (NonEmpty.toList ats)
-          defParamsMap = (\ds -> (ds, lenToParams (length ds) 
-            $ (Core.varLoc . Core.defName) <$> ds)) <$> cDefs
+            $ fmap (\(l, at) -> CVarExpr $ CVar ('a' : show l) at) 
+            $ zip [1..len] (NonEmpty.toList ats)
+          defParamsMap = do
+            cDefs <- cDefGroups
+            let locs = fmap (Core.defName >>> Core.varLoc) cDefs
+            return (cDefs, lenToParams (length cDefs) locs)
   return $ CDefNel mergedDefs
 
 toCoreConst :: SLit -> CConst
