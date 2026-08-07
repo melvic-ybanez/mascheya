@@ -35,7 +35,10 @@ lambda = (\(((_, params), _), body) -> SLambda params body)
   <&> expr
 
 pattern :: Parser SPat
-pattern = SVarPat <$> var
+pattern = varPat <|> litPat
+  where
+    varPat = SVarPat <$> var
+    litPat = SLitPat <$> lit
 
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA
