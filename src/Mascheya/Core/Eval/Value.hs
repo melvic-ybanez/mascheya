@@ -18,7 +18,6 @@ data Value s = ThunkVal (Thunk s)
   | DefNelVal (NonEmpty (Def s))
   | ProdVal (Product s)
   | MatchFailVal
-  | MatchErrorVal 
   | BottomVal
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
@@ -40,7 +39,7 @@ type Out s = ResultT (ST s) (Value s)
 
 data PureValue = PureClosureVal PureClosure | PureConstVal Const 
   | PureListVal PureList | PureDefNelVal | PureConstructorVal PureConstructor
-  | PureBottomVal | PureMatchFailVal | PureMatchErrorVal 
+  | PureBottomVal | PureMatchFailVal 
 
 data PureClosure = PureClosure CPat CExpr  
 
@@ -56,7 +55,6 @@ instance Display PureValue where
   display (PureConstructorVal (PureConstructor name args)) = name ++ " " ++ (display $ SSV args)
   display PureBottomVal = Lexemes.bottom
   display PureMatchFailVal = "<match-failure>"
-  display PureMatchErrorVal = "<match-error>"
 
 instance Display Const where
   display (IntVal int) = display int

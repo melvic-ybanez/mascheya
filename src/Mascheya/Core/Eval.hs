@@ -66,7 +66,7 @@ evalExpr (COrElseExpr (COrElse left right at)) = do
     MatchFailVal -> do
       rightVal <- evalExpr right
       case rightVal of
-        MatchErrorVal -> ReaderT $ const $ Result.failT $ RuntimeError MatchError at
+        MatchFailVal -> ReaderT $ const $ Result.failT $ RuntimeError MatchError at
         _ -> return rightVal
     _ -> return leftVal
 evalExpr CBottom = liftSucceedT BottomVal
@@ -200,7 +200,6 @@ reify (ListVal (ConsVal h t)) = do
     _ -> liftFailT $ InternalError $ TypecheckingFailed 
 reify (DefNelVal _) = return PureDefNelVal
 reify MatchFailVal = return PureMatchFailVal
-reify MatchErrorVal = return PureMatchErrorVal
 reify (ProdVal (Product name args)) = do
   argVals <- sequence $ evalExpr <$> args
   argPureVals <- sequence $ reify <$> argVals
