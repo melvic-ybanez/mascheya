@@ -38,7 +38,7 @@ pattern :: Parser SPat
 pattern = varPat <|> litPat
   where
     varPat = SVarPat <$> var
-    litPat = SLitPat <$> lit
+    litPat = (\(l, at) -> SLitPat l at) <$> track lit
 
 compExpr :: Parser SExpr
 compExpr = toInfix $ factor' <&> restA

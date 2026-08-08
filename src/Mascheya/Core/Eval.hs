@@ -35,7 +35,7 @@ evalExpr (CAppExpr (CApp func arg' source' loc')) = do
   callableVal <- evalExpr func
   case callableVal of
     ClosureVal closure -> applyPattern closure arg' source'
-    MatchFailVal -> liftSucceedT MatchFailVal
+    matchFail@(MatchFailVal _) -> liftSucceedT matchFail
     _ -> liftFailT $ RuntimeError (NotAFunction source') loc'
 evalExpr (CLetExpr (CLet (CDefNel defs) expr)) = do
   envRef <- ReaderT $ newLiftedRef . Env.extend0
@@ -60,15 +60,12 @@ evalExpr (CBuiltinFuncExpr builtin) = case builtin of
     dt <- lift $ newLiftedRef $ Delayed t env
     return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
 evalExpr (CConstExpr const') = liftSucceedT $ evalConst const'
-evalExpr (COrElseExpr (COrElse left right at)) = do
+evalExpr (COrElseExpr (COrElse left right)) = do
   leftVal <- evalExpr left
   case leftVal of
-    MatchFailVal -> do
-      rightVal <- evalExpr right
-      case rightVal of
-        MatchFailVal -> ReaderT $ const $ Result.failT $ RuntimeError MatchError at
-        _ -> return rightVal
-    _ -> return leftVal
+    BottomVal -> liftSucceedT BottomVal
+    (MatchFailVal _) -> evalExpr right
+    _ -> liftSucceedT leftVal
 evalExpr CBottomExpr = liftSucceedT BottomVal
 evalExpr (CProdExpr (CProd name args)) = liftSucceedT $ ProdVal $ Product name args 
 evalExpr (CConstructorExpr (CConstructor name loc')) = evalVar $ CVar name loc'
@@ -103,25 +100,25 @@ applyPattern (Closure paramPat body funcEnv) arg' source = do
       extendedEnv <- return $ extendWithParam funcEnv
 
       local (const extendedEnv) $ evalExpr body
-    CConstPat param' -> do 
+    CConstPat param' loc' -> do 
       pVal <- evalExpr $ CConstExpr param'
       argVal <- evalExpr arg'
       case (pVal, argVal) of   
         (_, BottomVal) -> liftSucceedT BottomVal
         (ConstVal pConst, ConstVal aConst) | pConst == aConst -> evalExpr body
-        _ -> liftSucceedT MatchFailVal
+        _ -> liftSucceedT $ MatchFailVal $ MatchFail loc'
     CConstructorPat (CConstructor constructorName loc') pats -> do
       argVal <- evalExpr arg'
       case argVal of
         ProdVal (Product argConstructorName argConstructors)
           | constructorName == argConstructorName -> 
               evalExpr (foldl' mkExpr init' $ unit : argConstructors)
-          | otherwise -> return MatchFailVal
+          | otherwise -> return $ MatchFailVal $ MatchFail loc'
           where 
             foldedLambda = fromLambdaDetails pats body
             init' = CAppExpr $ CApp foldedLambda unit source loc'
             mkExpr acc expr = CAppExpr $ CApp acc expr source loc'
-        _ -> return MatchFailVal
+        _ -> return $ MatchFailVal $ MatchFail loc'
 
 evalInfix :: CInfix -> Eval s
 evalInfix (CInfix a op b) = case op of
@@ -199,7 +196,7 @@ reify (ListVal (ConsVal h t)) = do
     (PureListVal pureList) -> return $ PureListVal $ PureConsVal pureH pureList
     _ -> liftFailT $ InternalError $ TypecheckingFailed 
 reify (DefNelVal _) = return PureDefNelVal
-reify MatchFailVal = return PureMatchFailVal
+reify (MatchFailVal (MatchFail loc')) = liftFailT $ RuntimeError MatchError loc'
 reify (ProdVal (Product name args)) = do
   argVals <- sequence $ evalExpr <$> args
   argPureVals <- sequence $ reify <$> argVals

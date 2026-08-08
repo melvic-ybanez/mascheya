@@ -46,7 +46,7 @@ data SConstructor = SConstructor String Loc deriving (Show, Eq)
 
 newtype SDefNel = SDefNel (NonEmpty SDef) deriving (Show, Eq)
 
-data SPat = SVarPat SVar | SLitPat SLit | SConstructorPat SConstructor [SPat] deriving (Show, Eq)
+data SPat = SVarPat SVar | SLitPat SLit Loc | SConstructorPat SConstructor [SPat] deriving (Show, Eq)
 
 instance Display SProg where
   display (SDefNelProg defNel) = display defNel
@@ -93,7 +93,7 @@ instance Display SDefNel where
 
 instance Display SPat where
   display (SVarPat var) = display var
-  display (SLitPat lit) = display lit
+  display (SLitPat lit _) = display lit
   display (SConstructorPat constructor args') = display constructor
     ++ [Lexemes.space] ++ (display $ SSV args')
 

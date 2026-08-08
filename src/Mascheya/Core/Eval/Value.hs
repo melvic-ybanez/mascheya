@@ -1,6 +1,6 @@
 module Mascheya.Core.Eval.Value where
 
-import Mascheya.Core.Result (ResultT)
+import Mascheya.Core.Result (ResultT, Loc)
 import Mascheya.Core.Eval.Env (Env)
 import Mascheya.Core.Display (Display(display), SSV (SSV))
 import Data.STRef (STRef)
@@ -17,7 +17,7 @@ data Value s = ThunkVal (Thunk s)
   | ListVal (List s) 
   | DefNelVal (NonEmpty (Def s))
   | ProdVal (Product s)
-  | MatchFailVal
+  | MatchFailVal MatchFail
   | BottomVal
 
 newtype Thunk s = Thunk (STRef s (ThunkState s))
@@ -35,11 +35,13 @@ newtype Def s = Def (STRef s (VEnv s))
 
 data Product s = Product String [CExpr]
 
+data MatchFail = MatchFail Loc
+
 type Out s = ResultT (ST s) (Value s)
 
 data PureValue = PureClosureVal PureClosure | PureConstVal Const 
-  | PureListVal PureList | PureDefNelVal | PureConstructorVal PureConstructor
-  | PureBottomVal | PureMatchFailVal 
+  | PureListVal PureList | PureDefNelVal | PureConstructorVal PureConstructor 
+  | PureBottomVal  
 
 data PureClosure = PureClosure CPat CExpr  
 
@@ -54,7 +56,6 @@ instance Display PureValue where
   display PureDefNelVal = display Unit
   display (PureConstructorVal (PureConstructor name args)) = name ++ " " ++ (display $ SSV args)
   display PureBottomVal = Lexemes.bottom
-  display PureMatchFailVal = "<match-failure>"
 
 instance Display Const where
   display (IntVal int) = display int

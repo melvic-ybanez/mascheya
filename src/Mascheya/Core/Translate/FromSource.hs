@@ -53,8 +53,8 @@ toCoreDefNel (SDefNel defNel) = do
   cDefGroups <- sequence $ sequence . fmap toCoreDef <$> defGroups
   let multiDefToOrElse (dh :| dt) params = foldl' (combine params) (mkApp params dh) dt
         where 
-          combine params' orElse cDef@(CDef (CVar _ at) _ _) = 
-            COrElseExpr $ COrElse orElse (mkApp params' cDef) at
+          combine params' orElse cDef = 
+            COrElseExpr $ COrElse orElse (mkApp params' cDef)
           mkApp (ph :| pt) (CDef (CVar name at) rhs _) = CAppExpr $ foldl' 
             (\app param' -> CApp (CAppExpr app) param' name at)
             (CApp rhs (CVarExpr ph) name at) 
@@ -65,9 +65,9 @@ toCoreDefNel (SDefNel defNel) = do
         $ TranslationError $ UnableToTranslate ("Multiple definitions for " ++ varName')
         $ varLoc'
       multiDefToSingle (defs@((CDef name _ _) :| _), params) = do
-        let lambdaBody' = multiDefToOrElse defs $ NonEmpty.fromList params
+        let orElse = multiDefToOrElse defs $ NonEmpty.fromList params
             paramPats = fmap CVarPat params
-            lambda = fromLambdaDetails paramPats lambdaBody'
+            lambda = fromLambdaDetails paramPats orElse
         return $ CDef name lambda
           $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
       
@@ -99,7 +99,7 @@ toCoreConstructor (SConstructor name loc) = CConstructor name loc
 
 toCorePat :: SPat -> CPat
 toCorePat (SVarPat pat) = CVarPat $ toCoreVar pat
-toCorePat (SLitPat pat) = CConstPat $ toCoreConst pat
+toCorePat (SLitPat pat loc') = CConstPat (toCoreConst pat) loc'
 toCorePat (SConstructorPat constructor pats) = 
   CConstructorPat (toCoreConstructor constructor) $ toCorePat <$> pats
 

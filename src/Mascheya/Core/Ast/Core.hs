@@ -12,7 +12,7 @@ data CProg = CDefNelProg CDefNel | CExprProg CExpr deriving Show
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
   | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet 
-  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottomExpr
+  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottomExpr 
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
@@ -59,10 +59,10 @@ data CProd = CProd String [CExpr] deriving Show
 
 data CConstructor = CConstructor String Loc deriving Show
 
-data CPat = CVarPat CVar | CConstPat CConst
+data CPat = CVarPat CVar | CConstPat CConst Loc
   | CConstructorPat CConstructor [CPat] deriving Show
 
-data COrElse = COrElse CExpr CExpr Loc deriving Show 
+data COrElse = COrElse CExpr CExpr deriving Show 
 
 unit :: CExpr
 unit = CProdExpr $ CProd Lexemes.unit []
@@ -120,7 +120,7 @@ instance Display CExpr where
   display (CLetExpr (CLet defs rhs)) = display 
     $ Str Lexemes.letKw :+: defs :+: Str Lexemes.inKw :+:  rhs
   display (CConstructorExpr constructor) = display constructor
-  display (COrElseExpr (COrElse left right _)) = display $ left :+: Str "<|>" :+: right
+  display (COrElseExpr (COrElse left right)) = display $ left :+: Str "<|>" :+: right
   display (CProdExpr (CProd name exprs)) = display $ Str name :+: SSV exprs
   display CBottomExpr = Lexemes.bottom
 
@@ -142,7 +142,7 @@ instance Display CConstructor where
 
 instance Display CPat where
   display (CVarPat var) = display var
-  display (CConstPat const') = display const'
+  display (CConstPat const' _) = display const'
   display (CConstructorPat constructor pats) = display $ constructor :+: SSV pats
 
 instance Display CDefNel where
