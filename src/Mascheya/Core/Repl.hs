@@ -32,15 +32,21 @@ repl state env = do
   putStr $ brightCyanStr "mascheya> " 
   hFlush stdout
 
-  rawInput <- if lineMode state == Single then getLine else getMultiLine
+  rawInput <- getLine
   case trim rawInput of
-    [] -> repl state env
     ":q" -> die $ brightCyanStr "Bye!"
     input -> case stripPrefix ":set" input of
-      Nothing -> do 
-        result <- runExceptT $ run input
-        newEnv <- handleResult result
-        repl state newEnv
+      Nothing -> case (input, lineMode state) of
+        ([], Single) -> repl state env
+        (_, Single) -> processInput input
+        (_, Multi) -> do
+          restOfInput <- getMultiLine
+          processInput $ input ++ restOfInput
+        where 
+          processInput input' = do
+            result <- runExceptT $ run input'
+            newEnv <- handleResult result
+            repl state newEnv
       Just rest -> case Parser.parse setArgParser rest of
         Left e -> report $ "Invalid argument pair. " ++ display e
         Right ("line", mode) -> case mode of
@@ -74,8 +80,9 @@ repl state env = do
     getMultiLine = recurse []
       where
         recurse lines = do
-          line <- getLine
-          if trim line == "-- end" then return $ intercalate [Lexemes.newline] $ reverse lines 
+          rawLine <- getLine
+          let line = trim rawLine
+          if line == "-- end" then return $ intercalate [Lexemes.newline] $ reverse lines 
           else recurse $ line : lines
 
     trim = trim' . trim'
