@@ -3,7 +3,7 @@ module Mascheya.Core.Translate.FromSource where
 import Mascheya.Core.Ast.Source 
 import Mascheya.Core.Ast.Core 
 import qualified Mascheya.Core.Result as Result
-import Data.List.NonEmpty (NonEmpty((:|)), sortOn, group)
+import Data.List.NonEmpty (NonEmpty((:|)), groupAllWith1)
 import Mascheya.Core.Display (Display(display))
 import qualified Mascheya.Core.Ast.Source as Source
 import Mascheya.Core.Result (
@@ -44,7 +44,7 @@ toCoreExpr (SConstructorExpr constr) = Result.succeed $ CConstructorExpr $ toCor
 
 toCoreDefNel :: SDefNel -> Result CDefNel
 toCoreDefNel (SDefNel defNel) = do
-  let defGroups = group $ sortOn Source.defName defNel
+  let defGroups = groupAllWith1 Source.defName defNel
       paramLens = fmap (fmap (length . defParams)) defGroups
   perGroupParamLens <- if all ((\(h :| t) -> all (== h) t)) paramLens
     then Result.succeed $ fmap NonEmpty.head paramLens 
@@ -71,12 +71,12 @@ toCoreDefNel (SDefNel defNel) = do
         return $ CDef name lambda
           $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
       
-      mergedDefs = NonEmpty.fromList $ multiDefToSingle <$> defParamsMap
+      mergedDefs = multiDefToSingle <$> defParamsMap
         where 
           lenToParams len locs = fmap (\(l, at) -> CVar ('a' : show l) at) 
             $ zip [1..len] (NonEmpty.toList locs)
           defParamsMap = do
-            (cDefs, paramLen) <- zip cDefGroups perGroupParamLens
+            (cDefs, paramLen) <- NonEmpty.zip cDefGroups perGroupParamLens
             let locs = fmap (Core.defName >>> Core.varLoc) cDefs
             return (cDefs, lenToParams paramLen locs)
   fmap CDefNel $ sequence mergedDefs
