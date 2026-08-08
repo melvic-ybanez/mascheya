@@ -35,7 +35,7 @@ toCoreExpr (SInfixExpr (SInfix arg1 op arg2)) =
 toCoreExpr (SLetExpr (SLet sDefNel expr)) = do
   (CDefNel mergedDefs) <- toCoreDefNel sDefNel
   cExpr <- toCoreExpr expr
-  return $ CLetExpr $ CLet mergedDefs cExpr
+  return $ CLetExpr $ CLet (CDefNel mergedDefs) cExpr
 toCoreExpr (SLambdaExpr (SLambda params body')) = do
   cExpr <- toCoreExpr body'
   let cParams = toCorePat <$> params
@@ -65,9 +65,9 @@ toCoreDefNel (SDefNel defNel) = do
         $ TranslationError $ UnableToTranslate ("Multiple definitions for " ++ varName')
         $ varLoc'
       multiDefToSingle (defs@((CDef name _ _) :| _), params) = do
-        let lambdaBody = multiDefToOrElse defs $ NonEmpty.fromList params
+        let lambdaBody' = multiDefToOrElse defs $ NonEmpty.fromList params
             paramPats = fmap CVarPat params
-            lambda = fromLambdaDetails paramPats lambdaBody
+            lambda = fromLambdaDetails paramPats lambdaBody'
         return $ CDef name lambda
           $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
       

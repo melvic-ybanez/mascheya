@@ -4,7 +4,7 @@
 module Mascheya.Core.Eval where
 
 import Mascheya.Core.Eval.Value 
-import Mascheya.Core.Ast.Core hiding (body)
+import Mascheya.Core.Ast.Core 
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
@@ -37,7 +37,7 @@ evalExpr (CAppExpr (CApp func arg' source' loc')) = do
     ClosureVal closure -> applyPattern closure arg' source'
     MatchFailVal -> liftSucceedT MatchFailVal
     _ -> liftFailT $ RuntimeError (NotAFunction source') loc'
-evalExpr (CLetExpr (CLet defs expr)) = do
+evalExpr (CLetExpr (CLet (CDefNel defs) expr)) = do
   envRef <- ReaderT $ newLiftedRef . Env.extend0
   Def letEnvRef <- lift $ foldl' 
     (\accDef def -> accDef >>= \(Def accEnv) -> register def accEnv) 
@@ -69,7 +69,7 @@ evalExpr (COrElseExpr (COrElse left right at)) = do
         MatchFailVal -> ReaderT $ const $ Result.failT $ RuntimeError MatchError at
         _ -> return rightVal
     _ -> return leftVal
-evalExpr CBottom = liftSucceedT BottomVal
+evalExpr CBottomExpr = liftSucceedT BottomVal
 evalExpr (CProdExpr (CProd name args)) = liftSucceedT $ ProdVal $ Product name args 
 evalExpr (CConstructorExpr (CConstructor name loc')) = evalVar $ CVar name loc'
   

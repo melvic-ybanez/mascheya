@@ -1,5 +1,5 @@
 module Mascheya.Core.Ast.Source where
-import Mascheya.Core.Display (Display (display), SSV (SSV))
+import Mascheya.Core.Display (Display (display), SSV (SSV), Tup ((:+:)), Str (Str))
 import Mascheya.Core.Result (Loc)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Data.List.NonEmpty (NonEmpty ((:|)), fromList, toList)
@@ -68,7 +68,8 @@ instance Display SExpr where
     where 
       newlineIndent = [Lexemes.newline, Lexemes.space, Lexemes.space]
   display (SLambdaExpr (SLambda params body)) = display 
-    (Lexemes.lambdaSymbol, (SSV $ toList params, body))
+    $ Str (Lexemes.lambdaSymbol : display (SSV (toList params))) 
+    :+: Str Lexemes.rightArrow :+: body
   display (SConstructorExpr constr) = display constr
 
 instance Display SVar where
@@ -84,7 +85,7 @@ instance Display SLit where
   display (SCharLit (SChar ch)) = "'" ++ display ch ++ "'"
 
 instance Display SDef where
-  display (SDef name params rhs) = display (name, (SSV params, (Lexemes.equals, rhs)))
+  display (SDef name params rhs) = display $ name :+: SSV params :+: Lexemes.equals :+: rhs
 
 instance Display SDefNel where
   display (SDefNel defs) = intercalate 

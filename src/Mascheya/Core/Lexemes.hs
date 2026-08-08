@@ -27,8 +27,14 @@ rightArrow = "->"
 lambdaSymbol :: Char
 lambdaSymbol = '\\'
 
-ifLexeme :: String
-ifLexeme = "if"
+ifKw :: String
+ifKw = "if"
+
+thenKw :: String
+thenKw = "then"
+
+elseKw :: String
+elseKw = "else"
 
 openSquareBracket :: Char
 openSquareBracket = '['

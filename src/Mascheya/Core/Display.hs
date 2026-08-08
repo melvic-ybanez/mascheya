@@ -15,6 +15,10 @@ class Display a where
 -- space-separated values
 newtype SSV a = SSV [a]
 
+newtype Str = Str String
+
+data Tup a b = a :+: b 
+
 instance Display Int
 instance Display Float
 instance Display Double
@@ -35,5 +39,8 @@ instance (Display a, Display b) => Display (Either a b) where
 instance Display a => Display (SSV a) where
   display (SSV xs) = intercalate [Lexemes.space] $ fmap display xs
 
-instance (Display a, Display b) => Display (a, b) where
-  display (a, b) = intercalate [Lexemes.space] [display a, display b]
+instance Display Str where
+  display (Str string) = string
+
+instance (Display a, Display b) => Display (Tup a b) where
+  display (a :+: b) = intercalate [Lexemes.space] [display a, display b]
