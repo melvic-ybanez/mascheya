@@ -44,7 +44,7 @@ toCoreExpr (SConstructorExpr constr) = Result.succeed $ CConstructorExpr $ toCor
 
 toCoreDefNel :: SDefNel -> Result CDefNel
 toCoreDefNel (SDefNel defNel) = do
-  let defGroups = groupAllWith1 Source.defName defNel
+  let defGroups = groupAllWith1 (Source.varName . Source.defName) defNel
       paramLens = fmap (fmap (length . defParams)) defGroups
   perGroupParamLens <- if all ((\(h :| t) -> all (== h) t)) paramLens
     then Result.succeed $ fmap NonEmpty.head paramLens 
