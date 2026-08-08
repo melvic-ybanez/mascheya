@@ -68,7 +68,7 @@ instance Display SExpr where
     where 
       newlineIndent = [Lexemes.newline, Lexemes.space, Lexemes.space]
   display (SLambdaExpr (SLambda params body)) = display 
-    (Lexemes.lambdaSymbol, SSV $ toList params, body)
+    (Lexemes.lambdaSymbol, (SSV $ toList params, body))
   display (SConstructorExpr constr) = display constr
 
 instance Display SVar where
@@ -81,15 +81,14 @@ instance Display SLit where
       SDoubleNum (SDouble double) -> display double
   display (SBoolLit STrue) = display True
   display (SBoolLit SFalse) = display False
-  display (SCharLit (SChar ch)) = display ch
+  display (SCharLit (SChar ch)) = "'" ++ display ch ++ "'"
 
 instance Display SDef where
-  display (SDef name params lhs) = display (name, SSV params, lhs)
+  display (SDef name params rhs) = display (name, (SSV params, (Lexemes.equals, rhs)))
 
 instance Display SDefNel where
   display (SDefNel defs) = intercalate 
-    [Lexemes.semicolon, Lexemes.newline, Lexemes.space, Lexemes.space] 
-    $ display <$> toList defs
+    [Lexemes.semicolon, Lexemes.newline] $ display <$> toList defs 
 
 instance Display SPat where
   display (SVarPat var) = display var

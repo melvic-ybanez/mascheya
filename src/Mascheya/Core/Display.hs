@@ -15,12 +15,14 @@ class Display a where
 -- space-separated values
 newtype SSV a = SSV [a]
 
-instance Display Char
 instance Display Int
 instance Display Float
 instance Display Double
 instance Display Bool
 instance Display ()
+
+instance Display Char where
+  display c = [c]
 
 -- TODO: see if we need to wrap NonEmpty in a separate type, like with the SSV above
 instance Display a => Display (NonEmpty a) where
@@ -33,5 +35,5 @@ instance (Display a, Display b) => Display (Either a b) where
 instance Display a => Display (SSV a) where
   display (SSV xs) = intercalate [Lexemes.space] $ fmap display xs
 
-instance (Display a, Display b, Display c) => Display (a, b, c) where
-  display (a, b, c) = intercalate [Lexemes.space] [display a, display b, display c]
+instance (Display a, Display b) => Display (a, b) where
+  display (a, b) = intercalate [Lexemes.space] [display a, display b]
