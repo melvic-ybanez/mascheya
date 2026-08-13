@@ -13,21 +13,21 @@ import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
 import Control.Monad.ST
 import Control.Monad.Trans (lift)
 
-type EvalT s a = ReaderT (VEnv s) (ResultT (ST s)) a
-type Eval s = EvalT s (Value s)
+type EvalOutT s a = ReaderT (VEnv s) (ResultT (ST s)) a
+type EvalOut s = EvalOutT s (Value s)
 
-eval :: CProg -> Eval s
+eval :: CProg -> EvalOut s
 eval (CDefNelProg (CDefNel defNel)) = do
   defNels <- sequence $ evalDef <$> defNel
   return $ DefNelVal defNels
 eval (CExprProg expr) = evalExpr expr
 
-evalDef :: CDef -> EvalT s (Def s)
+evalDef :: CDef -> EvalOutT s (Def s)
 evalDef cDef = do
   envRef <- ReaderT $ newLiftedRef . Env.extend0
   lift $ register cDef envRef
 
-evalExpr :: CExpr -> Eval s
+evalExpr :: CExpr -> EvalOut s
 evalExpr (CVarExpr var) = evalVar var
 evalExpr (CLambdaExpr (CLambda pattern body')) = 
   ReaderT $ Result.succeedT . ClosureVal . Closure pattern body'
@@ -70,7 +70,7 @@ evalExpr CBottomExpr = liftSucceedT BottomVal
 evalExpr (CProdExpr (CProd name args)) = liftSucceedT $ ProdVal $ Product name args 
 evalExpr (CConstructorExpr (CConstructor name loc')) = evalVar $ CVar name loc'
   
-evalVar :: CVar -> Eval s
+evalVar :: CVar -> EvalOut s
 evalVar (CVar name loc') = ReaderT $ maybe error' force . Env.lookup name
   where 
     error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
@@ -86,7 +86,7 @@ evalConst const' = ConstVal $ case const' of
   CBoolConst CFalse -> BoolVal False
   CUnitConst -> Unit
 
-applyPattern :: Closure s -> CExpr -> String -> Eval s
+applyPattern :: Closure s -> CExpr -> String -> EvalOut s
 applyPattern (Closure paramPat body funcEnv) arg' source = do
   case paramPat of 
     CVarPat (CVar paramName _) -> do
@@ -120,7 +120,7 @@ applyPattern (Closure paramPat body funcEnv) arg' source = do
             mkExpr acc expr = CAppExpr $ CApp acc expr source loc'
         _ -> return $ MatchFailVal $ MatchFail loc'
 
-evalInfix :: CInfix -> Eval s
+evalInfix :: CInfix -> EvalOut s
 evalInfix (CInfix a op b) = case op of
   CArithOp arithOp -> case arithOp of
     CPlus -> evalArith (+)
@@ -132,7 +132,7 @@ evalInfix (CInfix a op b) = case op of
       (_, _) -> liftTypeErrorT
 
     where
-      evalArith :: (forall a. Num a => a -> a -> a) -> Eval s
+      evalArith :: (forall a. Num a => a -> a -> a) -> EvalOut s
       evalArith binOp = evalArithWith binOp binOp binOp
 
       evalArithWith fi ff fd = evalInfix' 
@@ -147,7 +147,7 @@ evalInfix (CInfix a op b) = case op of
     CNotEq -> evalComp (/=)
 
     where
-      evalComp :: (forall a. (Ord a, Eq a) => a -> a -> Bool) -> Eval s
+      evalComp :: (forall a. (Ord a, Eq a) => a -> a -> Bool) -> EvalOut s
       evalComp comp = evalInfix' 
         (\i -> newBool . comp i) (\f -> newBool . comp f) (\d -> newBool . comp d)
   where
@@ -159,7 +159,7 @@ evalInfix (CInfix a op b) = case op of
     evalInfix' :: (Int -> Int -> CExpr) -> 
       (Float -> Float -> CExpr) -> 
         (Double -> Double -> CExpr) -> 
-          Eval s
+          EvalOut s
     evalInfix' fi ff fd = evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
       ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> evalExpr $ fi i1 i2
       ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> evalExpr $ ff f1 f2
@@ -184,7 +184,7 @@ force (Thunk ref) = lift (readSTRef ref) >>= handleState
       lift $ writeSTRef ref (Ready val)
       return val
 
-reify :: Value s -> EvalT s PureValue
+reify :: Value s -> EvalOutT s PureValue
 reify (ThunkVal thunk) = lift (force thunk) >>= reify
 reify (ClosureVal (Closure p b _)) = return $ PureClosureVal $ PureClosure p b
 reify (ConstVal c) = return $ PureConstVal c
@@ -203,14 +203,14 @@ reify (ProdVal (Product name args)) = do
   return $ PureConstructorVal $ PureConstructor name argPureVals
 reify BottomVal = return PureBottomVal
 
-liftBottom :: Eval s
+liftBottom :: EvalOut s
 liftBottom = liftSucceedT BottomVal
 
-liftSucceedT :: Value s -> Eval s
+liftSucceedT :: Value s -> EvalOut s
 liftSucceedT = lift . Result.succeedT
 
-liftFailT :: Failure -> EvalT s a
+liftFailT :: Failure -> EvalOutT s a
 liftFailT = lift . Result.failT
 
-liftTypeErrorT :: Eval s
+liftTypeErrorT :: EvalOut s
 liftTypeErrorT = liftFailT $ InternalError $ TypecheckingFailed
