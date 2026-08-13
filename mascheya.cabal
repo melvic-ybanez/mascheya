@@ -26,6 +26,7 @@ library
       Mascheya.Core.Parser.Prog
       Mascheya.Core.Repl
       Mascheya.Core.Result
+      Mascheya.Core.Run
       Mascheya.Core.Translate
       Mascheya.Core.Translate.FromSource
       Mascheya.Core.Types
@@ -50,6 +51,23 @@ executable mascheya
   build-depends:
       base >=4.22.0.0
     , containers
+    , mascheya
+    , mtl
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Mascheya.ConstSpec
+      Paths_mascheya
+  hs-source-dirs:
+      test
+  ghc-options: -Wall
+  build-depends:
+      base >=4.22.0.0
+    , containers
+    , hspec
     , mascheya
     , mtl
   default-language: Haskell2010

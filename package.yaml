@@ -14,5 +14,13 @@ executable:
   dependencies:
     - mascheya
 
+tests:
+  spec:
+    main: Spec.hs
+    source-dirs: test
+    dependencies:
+      - mascheya
+      - hspec
+
 ghc-options:
   - -Wall
