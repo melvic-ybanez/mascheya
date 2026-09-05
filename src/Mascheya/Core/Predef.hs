@@ -1,17 +1,24 @@
-module Mascheya.Core.Eval.Builtins where
+module Mascheya.Core.Predef (
+  module Mascheya.Core.Predef.Printer,
+  init
+) where
+
+import Mascheya.Core.Predef.Printer
+
 import Mascheya.Core.Eval.Value (VEnv, ThunkState (Delayed), Thunk (Thunk))
 import qualified Mascheya.Core.Eval.Env as Env
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Ast.Core 
 import Mascheya.Core.Result (ResultT, newLiftedRef)
-import Control.Monad.ST (ST)
 
-type Builtin s = VEnv s -> ResultT (ST s) (VEnv s)
+import Prelude hiding (init)
 
-init :: Builtin s
+type Builtin = VEnv -> ResultT IO VEnv
+
+init :: Builtin 
 init env = initArith env >>= initComp 
 
-initArith :: Builtin s
+initArith :: Builtin 
 initArith env = arithKind Lexemes.plus CPlus env
   >>= arithKind Lexemes.minus CMinus
   >>= arithKind Lexemes.times CTimes
@@ -20,7 +27,7 @@ initArith env = arithKind Lexemes.plus CPlus env
   where 
     arithKind lexeme kind = initInfix [lexeme] (CArithOp kind)
 
-initComp :: Builtin s
+initComp :: Builtin 
 initComp env = compKind Lexemes.equalsEquals CEqEq env
   >>= compKind Lexemes.notEquals CNotEq
   >>= compKind [Lexemes.lessThan] CLt
@@ -30,7 +37,7 @@ initComp env = compKind Lexemes.equalsEquals CEqEq env
   where
     compKind lexeme kind = initInfix lexeme (CCompOp kind)
 
-initInfix :: String -> CInfixOp -> Builtin s
+initInfix :: String -> CInfixOp -> Builtin
 initInfix opLexeme infixOp env = fmap (\ref -> Env.assign opLexeme (Thunk ref) env) 
   $ newLiftedRef env >>= newLiftedRef . Delayed outerClosure
   where 

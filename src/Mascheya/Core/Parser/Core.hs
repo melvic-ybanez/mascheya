@@ -15,10 +15,11 @@ data State = State { source :: String, line :: Int }
 newtype Parser a = Parser { run :: State -> Result (a, State) }
 
 repeat0 :: Parser a -> Parser [a]
-repeat0 p = opt (repeat p) >>= handle
-  where
-    handle Nothing = return []
-    handle (Just as) = return $ toList as
+repeat0 p = do
+  result <- opt $ repeat p
+  return $ case result of
+    Nothing -> []
+    Just as -> toList as
 
 repeat :: Parser a -> Parser (NonEmpty a)
 repeat pa = pa >>= \a -> Parser {
