@@ -7,9 +7,8 @@ import Data.List.NonEmpty
 import Mascheya.Core.Display (Display (display))
 import Prelude hiding (fail, error)
 import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError))
-import Data.STRef (newSTRef, STRef)
-import Control.Monad.ST
 import Control.Monad.Trans (lift)
+import Data.IORef (IORef, newIORef)
 
 type Result = Either FailureNel 
 type ResultT = ExceptT FailureNel
@@ -22,7 +21,9 @@ data Failure = ParseError ParseError Loc | RuntimeError RuntimeError Loc
 
 data ParseError = Invalid String String | Expected String | Eof deriving Show
 
-data RuntimeError = UndefinedVar String | NotAFunction String | MatchError deriving Show
+data RuntimeError = UndefinedVar String | NotAFunction String 
+  | MatchError | UndefinedCalled | NoIntansce String String
+  deriving Show
 
 data InternalError = TypecheckingFailed deriving Show
 
@@ -37,9 +38,6 @@ succeedT = return
 liftT :: Monad m => Result a -> ResultT m a
 liftT = ExceptT . return
 
-stEitherToIO :: ST RealWorld (Either e a) -> ExceptT e IO a
-stEitherToIO = ExceptT . stToIO
-
 fail :: Failure -> Result a
 fail = Left . singleton
 
@@ -49,11 +47,23 @@ failAll = Left
 failT :: Monad m => Failure -> ResultT m a
 failT = throwError . singleton
 
-newLiftedRef :: a -> ExceptT FailureNel (ST s) (STRef s a)
-newLiftedRef = lift . newSTRef
+newLiftedRef :: a -> ExceptT FailureNel IO (IORef a)
+newLiftedRef = lift . newIORef
 
 parseError :: ParseError -> Loc -> Result a
 parseError error = fail . ParseError error
+
+runtimeErrorT :: Monad m => RuntimeError -> Loc -> ResultT m a
+runtimeErrorT error = failT . RuntimeError error
+
+undefinedCalled :: Loc -> Failure
+undefinedCalled = RuntimeError UndefinedCalled
+
+matchError :: Loc -> Failure
+matchError = RuntimeError MatchError
+
+noInstance :: String -> String -> Loc -> Failure
+noInstance type' = RuntimeError . NoIntansce type'
 
 formatMsgWithLoc :: String -> Loc -> String
 formatMsgWithLoc msg loc = msg ++ " at " ++ display loc ++ ". "
@@ -77,6 +87,8 @@ instance Display RuntimeError where
   display (UndefinedVar name) = "Undefined variable: " ++ name
   display (NotAFunction source) = "Not a function: " ++ source
   display (MatchError) = "Pattern match error."
+  display UndefinedCalled = "Undefined called."
+  display (NoIntansce type' class') = "No " ++ class' ++ " instance for " ++ type'
 
 instance Display InternalError where
   display TypecheckingFailed = "Typechecker failed to capture a type error"

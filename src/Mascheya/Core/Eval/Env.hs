@@ -7,10 +7,10 @@ import Control.Applicative
 
 type Table a = Map String a
 
-data Env a = LocalEnv (Local a) | GlobalEnv (Global a)
+data Env a = LocalEnv (Local a) | GlobalEnv (Global a) deriving Show
 
-data Local a = Local (Table a) (Env a)
-data Global a = Global (Table a)
+data Local a = Local (Table a) (Env a) deriving Show
+data Global a = Global (Table a) deriving Show
 
 empty :: Env a
 empty = GlobalEnv $ Global Map.empty

@@ -12,7 +12,7 @@ data CProg = CDefNelProg CDefNel | CExprProg CExpr deriving Show
 
 data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
   | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet 
-  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottomExpr 
+  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottomExpr CBottom
   deriving Show
 
 data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
@@ -24,6 +24,8 @@ data CNumeric = CInt Int | CFloat Float | CDouble Double deriving Show
 data CChar = CChar Char deriving Show
 
 data CBool = CTrue | CFalse deriving Show
+
+data CBottom = CBottom Loc deriving Show
 
 data CLambda = CLambda { lambdaParam :: CPat, lambdaBody :: CExpr } deriving Show
 data CApp = CApp { 
@@ -116,13 +118,13 @@ instance Display CExpr where
       :+: Str Lexemes.thenKw :+: ifTrue 
       :+: Str Lexemes.elseKw :+: ifFalse
     CListFunc (CCons h t) -> display $ h :+: Str Lexemes.cons :+: t
-    CListFunc CNil -> display $ Lexemes.openSquareBracket :+: Lexemes.closeSquareBracket
+    CListFunc CNil -> display $ Lexemes.leftSquareBracket :+: Lexemes.rightSquareBracket
   display (CLetExpr (CLet defs rhs)) = display 
     $ Str Lexemes.letKw :+: defs :+: Str Lexemes.inKw :+:  rhs
   display (CConstructorExpr constructor) = display constructor
   display (COrElseExpr (COrElse left right)) = display $ left :+: Str "<|>" :+: right
   display (CProdExpr (CProd name exprs)) = display $ Str name :+: SSV exprs
-  display CBottomExpr = Lexemes.bottom
+  display (CBottomExpr _)= Lexemes.bottom
 
 instance Display CVar where
   display (CVar name _) = name

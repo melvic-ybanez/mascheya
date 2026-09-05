@@ -36,11 +36,11 @@ thenKw = "then"
 elseKw :: String
 elseKw = "else"
 
-openSquareBracket :: Char
-openSquareBracket = '['
+leftSquareBracket :: Char
+leftSquareBracket = '['
 
-closeSquareBracket :: Char
-closeSquareBracket = ']'
+rightSquareBracket :: Char
+rightSquareBracket = ']'
 
 cons :: String
 cons = "::"

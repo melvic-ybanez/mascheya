@@ -9,25 +9,24 @@ import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Result
 import Control.Monad.Reader (ReaderT (ReaderT, runReaderT), MonadReader (..) )
-import Data.STRef (writeSTRef, readSTRef, modifySTRef, STRef)
-import Control.Monad.ST
 import Control.Monad.Trans (lift)
+import Data.IORef (IORef, modifyIORef, readIORef, writeIORef)
 
-type EvalOutT s a = ReaderT (VEnv s) (ResultT (ST s)) a
-type EvalOut s = EvalOutT s (Value s)
+type EvalOutT a = ReaderT VEnv (ResultT IO) a
+type EvalOut = EvalOutT Value
 
-eval :: CProg -> EvalOut s
+eval :: CProg -> EvalOut
 eval (CDefNelProg (CDefNel defNel)) = do
   defNels <- sequence $ evalDef <$> defNel
   return $ DefNelVal defNels
 eval (CExprProg expr) = evalExpr expr
 
-evalDef :: CDef -> EvalOutT s (Def s)
+evalDef :: CDef -> EvalOutT Def
 evalDef cDef = do
   envRef <- ReaderT $ newLiftedRef . Env.extend0
   lift $ register cDef envRef
 
-evalExpr :: CExpr -> EvalOut s
+evalExpr :: CExpr -> EvalOut
 evalExpr (CVarExpr var) = evalVar var
 evalExpr (CLambdaExpr (CLambda pattern body')) = 
   ReaderT $ Result.succeedT . ClosureVal . Closure pattern body'
@@ -36,13 +35,13 @@ evalExpr (CAppExpr (CApp func arg' source' loc')) = do
   case callableVal of
     ClosureVal closure -> applyPattern closure arg' source'
     matchFail@(MatchFailVal _) -> liftSucceedT matchFail
-    _ -> liftFailT $ RuntimeError (NotAFunction source') loc'
+    _ -> lift $ Result.runtimeErrorT (NotAFunction source') loc'
 evalExpr (CLetExpr (CLet (CDefNel defs) expr)) = do
   envRef <- ReaderT $ newLiftedRef . Env.extend0
   Def letEnvRef <- lift $ foldl' 
     (\accDef def -> accDef >>= \(Def accEnv) -> register def accEnv) 
     (Result.succeedT $ Def envRef) defs
-  letEnv <- lift $ lift $ readSTRef letEnvRef
+  letEnv <- lift $ lift $ readIORef letEnvRef
   local (const letEnv) $ evalExpr expr
 evalExpr (CBuiltinFuncExpr builtin) = case builtin of
   CInfixFunc cInfix -> evalInfix cInfix
@@ -51,31 +50,31 @@ evalExpr (CBuiltinFuncExpr builtin) = case builtin of
     case condVal of
       ConstVal (BoolVal True) -> evalExpr ifTrue
       ConstVal (BoolVal False) -> evalExpr ifFalse
-      BottomVal -> liftBottom
+      BottomVal (Bottom at) -> liftBottom at
       _ -> liftTypeErrorT
-  CListFunc CNil -> liftSucceedT $ ListVal NilVal
+  CListFunc CNil -> liftSucceedT $ ListVal Nil
   CListFunc (CCons h t) -> do
     env <- ReaderT newLiftedRef 
     dh <- lift $ newLiftedRef $ Delayed h env
     dt <- lift $ newLiftedRef $ Delayed t env
-    return $ ListVal $ ConsVal (Thunk dh) (Thunk dt)
+    return $ ListVal $ Cons (Thunk dh) (Thunk dt)
 evalExpr (CConstExpr const') = liftSucceedT $ evalConst const'
 evalExpr (COrElseExpr (COrElse left right)) = do
   leftVal <- evalExpr left
   case leftVal of
-    BottomVal -> liftSucceedT BottomVal
+    BottomVal (Bottom at) -> liftBottom at
     (MatchFailVal _) -> evalExpr right
     _ -> liftSucceedT leftVal
-evalExpr CBottomExpr = liftSucceedT BottomVal
+evalExpr (CBottomExpr (CBottom at)) = lift $ Result.runtimeErrorT UndefinedCalled at
 evalExpr (CProdExpr (CProd name args)) = liftSucceedT $ ProdVal $ Product name args 
 evalExpr (CConstructorExpr (CConstructor name loc')) = evalVar $ CVar name loc'
   
-evalVar :: CVar -> EvalOut s
+evalVar :: CVar -> EvalOut
 evalVar (CVar name loc') = ReaderT $ maybe error' force . Env.lookup name
   where 
-    error' = Result.failT $ RuntimeError (UndefinedVar name) loc'
+    error' = Result.runtimeErrorT (UndefinedVar name) loc'
 
-evalConst :: CConst -> Value s
+evalConst :: CConst -> Value
 evalConst const' = ConstVal $ case const' of
   CNumConst num -> case num of
     CInt int -> IntVal int
@@ -86,7 +85,7 @@ evalConst const' = ConstVal $ case const' of
   CBoolConst CFalse -> BoolVal False
   CUnitConst -> Unit
 
-applyPattern :: Closure s -> CExpr -> String -> EvalOut s
+applyPattern :: Closure -> CExpr -> String -> EvalOut
 applyPattern (Closure paramPat body funcEnv) arg' source = do
   case paramPat of 
     CVarPat (CVar paramName _) -> do
@@ -104,7 +103,7 @@ applyPattern (Closure paramPat body funcEnv) arg' source = do
       pVal <- evalExpr $ CConstExpr param'
       argVal <- evalExpr arg'
       case (pVal, argVal) of   
-        (_, BottomVal) -> liftSucceedT BottomVal
+        (_, BottomVal (Bottom at)) -> liftBottom at
         (ConstVal pConst, ConstVal aConst) | pConst == aConst -> evalExpr body
         _ -> liftSucceedT $ MatchFailVal $ MatchFail loc'
     CConstructorPat (CConstructor constructorName loc') pats -> do
@@ -120,7 +119,7 @@ applyPattern (Closure paramPat body funcEnv) arg' source = do
             mkExpr acc expr = CAppExpr $ CApp acc expr source loc'
         _ -> return $ MatchFailVal $ MatchFail loc'
 
-evalInfix :: CInfix -> EvalOut s
+evalInfix :: CInfix -> EvalOut
 evalInfix (CInfix a op b) = case op of
   CArithOp arithOp -> case arithOp of
     CPlus -> evalArith (+)
@@ -132,7 +131,7 @@ evalInfix (CInfix a op b) = case op of
       (_, _) -> liftTypeErrorT
 
     where
-      evalArith :: (forall a. Num a => a -> a -> a) -> EvalOut s
+      evalArith :: (forall a. Num a => a -> a -> a) -> EvalOut 
       evalArith binOp = evalArithWith binOp binOp binOp
 
       evalArithWith fi ff fd = evalInfix' 
@@ -147,7 +146,7 @@ evalInfix (CInfix a op b) = case op of
     CNotEq -> evalComp (/=)
 
     where
-      evalComp :: (forall a. (Ord a, Eq a) => a -> a -> Bool) -> EvalOut s
+      evalComp :: (forall a. (Ord a, Eq a) => a -> a -> Bool) -> EvalOut 
       evalComp comp = evalInfix' 
         (\i -> newBool . comp i) (\f -> newBool . comp f) (\d -> newBool . comp d)
   where
@@ -159,58 +158,41 @@ evalInfix (CInfix a op b) = case op of
     evalInfix' :: (Int -> Int -> CExpr) -> 
       (Float -> Float -> CExpr) -> 
         (Double -> Double -> CExpr) -> 
-          EvalOut s
+          EvalOut 
     evalInfix' fi ff fd = evalInfixOpWith $ \aVal -> \bVal -> case (aVal, bVal) of                    
       ((ConstVal (IntVal i1)), (ConstVal (IntVal i2))) -> evalExpr $ fi i1 i2
       ((ConstVal (FloatVal f1)), (ConstVal (FloatVal f2))) -> evalExpr $ ff f1 f2
       ((ConstVal (DoubleVal d1)), (ConstVal (DoubleVal d2))) -> evalExpr $ fd d1 d2
-      (BottomVal, _) -> liftBottom
-      (_, BottomVal) -> liftBottom
+      (BottomVal (Bottom at), _) -> liftBottom at
+      (_, BottomVal (Bottom at)) -> liftBottom at
       (_, _) -> liftTypeErrorT
 
-register :: CDef -> STRef s (VEnv s) -> ResultT (ST s) (Def s)
+register :: CDef -> IORef VEnv -> ResultT IO Def
 register (CDef (CVar name _) rhs' _) = \envRef -> do
   rhsState <- newLiftedRef $ Delayed rhs' envRef
-  lift $ modifySTRef envRef (Env.assign name $ Thunk rhsState)
+  lift $ modifyIORef envRef (Env.assign name $ Thunk rhsState)
   return $ Def envRef
 
-force :: Thunk s -> Out s
-force (Thunk ref) = lift (readSTRef ref) >>= handleState
-  where 
-    handleState (Ready out) = return out
-    handleState (Delayed expr envRef) = do
-      env <- lift $ readSTRef envRef
+force :: Thunk -> Out 
+force (Thunk ref) = do
+  state <- lift $ readIORef ref
+  case state of
+    Ready (ThunkVal thunk) -> force thunk
+    Ready out -> return out
+    Delayed expr envRef -> do
+      env <- lift $ readIORef envRef
       val <- runReaderT (evalExpr expr) env
-      lift $ writeSTRef ref (Ready val)
+      lift $ writeIORef ref (Ready val)
       return val
 
-reify :: Value s -> EvalOutT s PureValue
-reify (ThunkVal thunk) = lift (force thunk) >>= reify
-reify (ClosureVal (Closure p b _)) = return $ PureClosureVal $ PureClosure p b
-reify (ConstVal c) = return $ PureConstVal c
-reify (ListVal NilVal) = return $ PureListVal PureNilVal 
-reify (ListVal (ConsVal h t)) = do
-  pureH <- reify (ThunkVal h) 
-  pureT <- reify (ThunkVal t) 
-  case pureT of
-    (PureListVal pureList) -> return $ PureListVal $ PureConsVal pureH pureList
-    _ -> liftFailT $ InternalError $ TypecheckingFailed 
-reify (DefNelVal _) = return PureDefNelVal
-reify (MatchFailVal (MatchFail loc')) = liftFailT $ RuntimeError MatchError loc'
-reify (ProdVal (Product name args)) = do
-  argVals <- sequence $ evalExpr <$> args
-  argPureVals <- sequence $ reify <$> argVals
-  return $ PureConstructorVal $ PureConstructor name argPureVals
-reify BottomVal = return PureBottomVal
+liftBottom :: Loc -> EvalOut 
+liftBottom = liftSucceedT . BottomVal . Bottom 
 
-liftBottom :: EvalOut s
-liftBottom = liftSucceedT BottomVal
-
-liftSucceedT :: Value s -> EvalOut s
+liftSucceedT :: Value -> EvalOut
 liftSucceedT = lift . Result.succeedT
 
-liftFailT :: Failure -> EvalOutT s a
+liftFailT :: Failure -> EvalOutT a
 liftFailT = lift . Result.failT
 
-liftTypeErrorT :: EvalOut s
+liftTypeErrorT :: EvalOut 
 liftTypeErrorT = liftFailT $ InternalError $ TypecheckingFailed
