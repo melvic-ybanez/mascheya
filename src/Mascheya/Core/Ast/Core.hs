@@ -1,70 +1,87 @@
 module Mascheya.Core.Ast.Core where
-  
-import Mascheya.Core.Result (Loc, dummyLoc)
-import Data.List.NonEmpty (NonEmpty)
-import qualified Mascheya.Core.Lexemes as Lexemes
-import Mascheya.Core.Display (Display (display), SSV (SSV), Str (Str), Tup ((:+:)))
+
 import Data.List (intercalate)
-import Text.Printf (printf)
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
+import Mascheya.Core.Display (Display (display), SSV (SSV), Str (Str), Tup ((:+:)))
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Result (Loc, dummyLoc)
+import Text.Printf (printf)
 
-data CProg = CDefNelProg CDefNel | CExprProg CExpr deriving Show
+data CProg = CDefNelProg CDefNel | CExprProg CExpr deriving (Show)
 
-data CExpr = CVarExpr CVar | CLambdaExpr CLambda | CConstExpr CConst 
-  | CAppExpr CApp | CBuiltinFuncExpr CBuiltinFunc | CLetExpr CLet 
-  | CConstructorExpr CConstructor | COrElseExpr COrElse | CProdExpr CProd | CBottomExpr CBottom
-  deriving Show
+data CExpr
+  = CVarExpr CVar
+  | CLambdaExpr CLambda
+  | CConstExpr CConst
+  | CAppExpr CApp
+  | CBuiltinFuncExpr CBuiltinFunc
+  | CLetExpr CLet
+  | CConstructorExpr CConstructor
+  | COrElseExpr COrElse
+  | CProdExpr CProd
+  | CBottomExpr CBottom
+  deriving (Show)
 
-data CVar = CVar { varName :: String, varLoc :: Loc } deriving (Show, Eq)
+data CVar = CVar {varName :: String, varLoc :: Loc} deriving (Show, Eq)
 
-data CConst = CNumConst CNumeric | CCharConst CChar | CBoolConst CBool | CUnitConst deriving Show
+data CConst = CNumConst CNumeric | CCharConst CChar | CBoolConst CBool | CUnitConst deriving (Show)
 
-data CNumeric = CInt Int | CFloat Float | CDouble Double deriving Show
+data CNumeric = CInt Int | CFloat Float | CDouble Double deriving (Show)
 
-data CChar = CChar Char deriving Show
+data CChar = CChar Char deriving (Show)
 
-data CBool = CTrue | CFalse deriving Show
+data CBool = CTrue | CFalse deriving (Show)
 
-data CBottom = CBottom Loc deriving Show
+data CBottom = CBottom Loc deriving (Show)
 
-data CLambda = CLambda { lambdaParam :: CPat, lambdaBody :: CExpr } deriving Show
-data CApp = CApp { 
-  appCallable :: CExpr, 
-  appArg :: CExpr, 
-  appSource :: String, 
-  appLoc :: Loc 
-} deriving Show
+data CLambda = CLambda {lambdaParam :: CPat, lambdaBody :: CExpr} deriving (Show)
 
-data CBuiltinFunc = CInfixFunc CInfix | CIfFunc CIf | CListFunc CList deriving Show
+data CApp = CApp
+  { appCallable :: CExpr,
+    appArg :: CExpr,
+    appSource :: String,
+    appLoc :: Loc
+  }
+  deriving (Show)
 
-data CInfix = CInfix CExpr CInfixOp CExpr deriving Show
+data CBuiltinFunc = CInfixFunc CInfix | CIfFunc CIf | CListFunc CList deriving (Show)
 
-data CArith = CPlus | CMinus | CTimes | CDivide | CModulo deriving Show
-data CList = CCons CExpr CExpr | CNil deriving Show
-data CIf = CIf CExpr CExpr CExpr deriving Show
+data CInfix = CInfix CExpr CInfixOp CExpr deriving (Show)
 
-data CInfixOp = CArithOp CArith | CCompOp CComp deriving Show
+data CArith = CPlus | CMinus | CTimes | CDivide | CModulo deriving (Show)
+
+data CList = CCons CExpr CExpr | CNil deriving (Show)
+
+data CIf = CIf CExpr CExpr CExpr deriving (Show)
+
+data CInfixOp = CArithOp CArith | CCompOp CComp deriving (Show)
+
 data CComp = CEqEq | CNotEq | CLt | CLte | CGt | CGte
-  deriving Show
+  deriving (Show)
 
-data CLet = CLet CDefNel CExpr deriving Show
+data CLet = CLet CDefNel CExpr deriving (Show)
 
-newtype CDefNel = CDefNel (NonEmpty CDef) deriving Show
+newtype CDefNel = CDefNel (NonEmpty CDef) deriving (Show)
 
-data CDef = CDef { 
-  defName :: CVar,
-  defRhs :: CExpr, 
-  defSource :: String
-} deriving Show
+data CDef = CDef
+  { defName :: CVar,
+    defRhs :: CExpr,
+    defSource :: String
+  }
+  deriving (Show)
 
-data CProd = CProd String [CExpr] deriving Show
+data CProd = CProd String [CExpr] deriving (Show)
 
-data CConstructor = CConstructor String Loc deriving Show
+data CConstructor = CConstructor String Loc deriving (Show)
 
-data CPat = CVarPat CVar | CConstPat CConst Loc
-  | CConstructorPat CConstructor [CPat] deriving Show
+data CPat
+  = CVarPat CVar
+  | CConstPat CConst Loc
+  | CConstructorPat CConstructor [CPat]
+  deriving (Show)
 
-data COrElse = COrElse CExpr CExpr deriving Show 
+data COrElse = COrElse CExpr CExpr deriving (Show)
 
 unit :: CExpr
 unit = CProdExpr $ CProd Lexemes.unit []
@@ -79,7 +96,7 @@ newLambda :: CPat -> CExpr -> CExpr
 newLambda param' = CLambdaExpr . CLambda param'
 
 newInt :: Int -> CExpr
-newInt = newNumeric CInt 
+newInt = newNumeric CInt
 
 newFloat :: Float -> CExpr
 newFloat = newNumeric CFloat
@@ -91,14 +108,14 @@ newNumeric :: (a -> CNumeric) -> a -> CExpr
 newNumeric f = CConstExpr . CNumConst . f
 
 newBool :: Bool -> CExpr
-newBool b = CConstExpr $ CBoolConst $ case b of 
+newBool b = CConstExpr $ CBoolConst $ case b of
   True -> CTrue
   False -> CFalse
 
 fromLambdaDetails :: [CPat] -> CExpr -> CExpr
 fromLambdaDetails patterns = flip (foldr mkLambdaExpr) patterns
-  where 
-    mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc 
+  where
+    mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc
 
 instance Display CProg where
   display (CDefNelProg defNel) = display defNel
@@ -106,25 +123,32 @@ instance Display CProg where
 
 instance Display CExpr where
   display (CVarExpr var) = display var
-  display (CLambdaExpr (CLambda param body)) = display 
-    $ (Str $ Lexemes.lambdaSymbol : display param) 
-    :+: Str Lexemes.rightArrow :+: body
+  display (CLambdaExpr (CLambda param body)) =
+    display $
+      (Str $ Lexemes.lambdaSymbol : display param)
+        :+: Str Lexemes.rightArrow
+        :+: body
   display (CConstExpr const') = display const'
   display (CAppExpr (CApp callable arg _ _)) = display $ SSV [callable, arg]
   display (CBuiltinFuncExpr builtin) = case builtin of
     CInfixFunc (CInfix left op right) -> display $ left :+: op :+: right
-    CIfFunc (CIf cond ifTrue ifFalse) -> display 
-      $ Str Lexemes.ifKw :+: cond 
-      :+: Str Lexemes.thenKw :+: ifTrue 
-      :+: Str Lexemes.elseKw :+: ifFalse
+    CIfFunc (CIf cond ifTrue ifFalse) ->
+      display $
+        Str Lexemes.ifKw
+          :+: cond
+          :+: Str Lexemes.thenKw
+          :+: ifTrue
+          :+: Str Lexemes.elseKw
+          :+: ifFalse
     CListFunc (CCons h t) -> display $ h :+: Str Lexemes.cons :+: t
     CListFunc CNil -> display $ Lexemes.leftSquareBracket :+: Lexemes.rightSquareBracket
-  display (CLetExpr (CLet defs rhs)) = display 
-    $ Str Lexemes.letKw :+: defs :+: Str Lexemes.inKw :+:  rhs
+  display (CLetExpr (CLet defs rhs)) =
+    display $
+      Str Lexemes.letKw :+: defs :+: Str Lexemes.inKw :+: rhs
   display (CConstructorExpr constructor) = display constructor
   display (COrElseExpr (COrElse left right)) = display $ left :+: Str "<|>" :+: right
   display (CProdExpr (CProd name exprs)) = display $ Str name :+: SSV exprs
-  display (CBottomExpr _)= Lexemes.bottom
+  display (CBottomExpr _) = Lexemes.bottom
 
 instance Display CVar where
   display (CVar name _) = name
@@ -148,8 +172,10 @@ instance Display CPat where
   display (CConstructorPat constructor pats) = display $ constructor :+: SSV pats
 
 instance Display CDefNel where
-  display (CDefNel defs) = intercalate [Lexemes.semicolon, Lexemes.newline]
-    $ NonEmpty.toList $ display <$> defs
+  display (CDefNel defs) =
+    intercalate [Lexemes.semicolon, Lexemes.newline]
+      $ NonEmpty.toList
+      $ display <$> defs
 
 instance Display CDef where
   display (CDef name rhs _) = display $ name :+: Lexemes.equals :+: rhs

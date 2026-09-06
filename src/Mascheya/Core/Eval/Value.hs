@@ -2,35 +2,42 @@
 
 module Mascheya.Core.Eval.Value where
 
-import Mascheya.Core.Result (ResultT, Loc)
-import Mascheya.Core.Eval.Env (Env)
-import Mascheya.Core.Ast.Core (CExpr, CPat)
-import Data.List.NonEmpty (NonEmpty)
 import Data.IORef (IORef)
+import Data.List.NonEmpty (NonEmpty)
+import Mascheya.Core.Ast.Core (CExpr, CPat)
+import Mascheya.Core.Eval.Env (Env)
+import Mascheya.Core.Result (Loc, ResultT)
 
 type VEnv = Env Thunk
 
-data Value = ThunkVal Thunk 
+data Value
+  = ThunkVal Thunk
   | ClosureVal Closure
-  | ConstVal Const 
+  | ConstVal Const
   | ListVal List
   | DefNelVal (NonEmpty Def)
   | ProdVal Product
   | MatchFailVal MatchFail
   | BottomVal Bottom
 
-newtype Thunk = Thunk (IORef ThunkState) 
+newtype Thunk = Thunk (IORef ThunkState)
 
-data ThunkState = Delayed CExpr (IORef VEnv) | Ready Value 
+data ThunkState = Delayed CExpr (IORef VEnv) | Ready Value
 
-data Closure = Closure { closureParam :: CPat, closureBody :: CExpr, closureEnv :: VEnv } 
+data Closure = Closure {closureParam :: CPat, closureBody :: CExpr, closureEnv :: VEnv}
 
-data Const = IntVal Int | FloatVal Float | DoubleVal Double | CharVal Char 
-  | BoolVal Bool | Unit deriving (Eq, Show)
+data Const
+  = IntVal Int
+  | FloatVal Float
+  | DoubleVal Double
+  | CharVal Char
+  | BoolVal Bool
+  | Unit
+  deriving (Eq, Show)
 
-data List = Cons Thunk Thunk | Nil 
+data List = Cons Thunk Thunk | Nil
 
-newtype Def = Def (IORef VEnv) 
+newtype Def = Def (IORef VEnv)
 
 data Product = Product String [CExpr]
 

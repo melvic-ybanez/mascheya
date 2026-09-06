@@ -1,19 +1,21 @@
 module Mascheya.Core.Translate.FromSource where
 
-import Mascheya.Core.Ast.Source 
-import Mascheya.Core.Ast.Core 
-import qualified Mascheya.Core.Result as Result
-import Data.List.NonEmpty (NonEmpty((:|)), groupAllWith1)
-import Mascheya.Core.Display (Display(display))
-import qualified Mascheya.Core.Ast.Source as Source
-import Mascheya.Core.Result (
-    Result, Failure (TranslationError), TranslationError (UnableToTranslate)
-  )
-import qualified Data.List.NonEmpty as NonEmpty
-import Data.List (intercalate)
-import qualified Mascheya.Core.Lexemes as Lexemes
-import qualified Mascheya.Core.Ast.Core as Core
 import Control.Arrow ((>>>))
+import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty ((:|)), groupAllWith1)
+import qualified Data.List.NonEmpty as NonEmpty
+import Mascheya.Core.Ast.Core
+import qualified Mascheya.Core.Ast.Core as Core
+import Mascheya.Core.Ast.Source
+import qualified Mascheya.Core.Ast.Source as Source
+import Mascheya.Core.Display (Display (display))
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Result
+  ( Failure (TranslationError),
+    Result,
+    TranslationError (UnableToTranslate),
+  )
+import qualified Mascheya.Core.Result as Result
 
 toCoreProg :: SProg -> Result CProg
 toCoreProg (SDefNelProg sDefNel) = CDefNelProg <$> toCoreDefNel sDefNel
@@ -46,35 +48,49 @@ toCoreDefNel :: SDefNel -> Result CDefNel
 toCoreDefNel (SDefNel defNel) = do
   let defGroups = groupAllWith1 (Source.varName . Source.defName) defNel
       paramLens = fmap (fmap (length . defParams)) defGroups
-  perGroupParamLens <- if all ((\(h :| t) -> all (== h) t)) paramLens
-    then Result.succeed $ fmap NonEmpty.head paramLens 
-    else Result.fail $ TranslationError $ UnableToTranslate "Number of params are not the same"
-      $ Source.varLoc $ Source.defName $ NonEmpty.head defNel 
+  perGroupParamLens <-
+    if all ((\(h :| t) -> all (== h) t)) paramLens
+      then Result.succeed $ fmap NonEmpty.head paramLens
+      else
+        Result.fail
+          $ TranslationError
+          $ UnableToTranslate "Number of params are not the same"
+          $ Source.varLoc
+          $ Source.defName
+          $ NonEmpty.head defNel
   cDefGroups <- sequence $ sequence . fmap toCoreDef <$> defGroups
   let multiDefToOrElse (dh :| dt) params = foldl' (combine params) (mkApp params dh) dt
-        where 
-          combine params' orElse cDef = 
+        where
+          combine params' orElse cDef =
             COrElseExpr $ COrElse orElse (mkApp params' cDef)
-          mkApp (ph :| pt) (CDef (CVar name at) rhs _) = CAppExpr $ foldl' 
-            (\app param' -> CApp (CAppExpr app) param' name at)
-            (CApp rhs (CVarExpr ph) name at) 
-            $ fmap CVarExpr pt
-      
+          mkApp (ph :| pt) (CDef (CVar name at) rhs _) =
+            CAppExpr
+              $ foldl'
+                (\app param' -> CApp (CAppExpr app) param' name at)
+                (CApp rhs (CVarExpr ph) name at)
+              $ fmap CVarExpr pt
+
       multiDefToSingle (def :| [], []) = Result.succeed def
-      multiDefToSingle ((CDef (CVar varName' varLoc') _ _) :| _, []) = Result.fail
-        $ TranslationError $ UnableToTranslate ("Multiple definitions for " ++ varName')
-        $ varLoc'
+      multiDefToSingle ((CDef (CVar varName' varLoc') _ _) :| _, []) =
+        Result.fail
+          $ TranslationError
+          $ UnableToTranslate ("Multiple definitions for " ++ varName')
+          $ varLoc'
       multiDefToSingle (defs@((CDef name _ _) :| _), params) = do
         let orElse = multiDefToOrElse defs $ NonEmpty.fromList params
             paramPats = fmap CVarPat params
             lambda = fromLambdaDetails paramPats orElse
-        return $ CDef name lambda
-          $ intercalate [Lexemes.newline] $ NonEmpty.toList $ defSource <$> defs
-      
+        return
+          $ CDef name lambda
+          $ intercalate [Lexemes.newline]
+          $ NonEmpty.toList
+          $ defSource <$> defs
+
       mergedDefs = multiDefToSingle <$> defParamsMap
-        where 
-          lenToParams len locs = fmap (\(l, at) -> CVar ('a' : show l) at) 
-            $ zip [1..len] (NonEmpty.toList locs)
+        where
+          lenToParams len locs =
+            fmap (\(l, at) -> CVar ('a' : show l) at) $
+              zip [1 .. len] (NonEmpty.toList locs)
           defParamsMap = do
             (cDefs, paramLen) <- NonEmpty.zip cDefGroups perGroupParamLens
             let locs = fmap (Core.defName >>> Core.varLoc) cDefs
@@ -83,12 +99,12 @@ toCoreDefNel (SDefNel defNel) = do
 
 toCoreConst :: SLit -> CConst
 toCoreConst lit = case lit of
-  SNumLit numlit -> CNumConst $ case numlit of 
-    SIntNum (SInt int) ->  CInt int
+  SNumLit numlit -> CNumConst $ case numlit of
+    SIntNum (SInt int) -> CInt int
     SFloatNum (SFloat float) -> CFloat float
     SDoubleNum (SDouble double) -> CDouble double
   SCharLit (SChar ch) -> CCharConst $ CChar ch
-  SBoolLit STrue -> CBoolConst CTrue 
+  SBoolLit STrue -> CBoolConst CTrue
   SBoolLit SFalse -> CBoolConst CFalse
 
 toCoreVar :: SVar -> CVar
@@ -100,12 +116,12 @@ toCoreConstructor (SConstructor name loc) = CConstructor name loc
 toCorePat :: SPat -> CPat
 toCorePat (SVarPat pat) = CVarPat $ toCoreVar pat
 toCorePat (SLitPat pat loc') = CConstPat (toCoreConst pat) loc'
-toCorePat (SConstructorPat constructor pats) = 
+toCorePat (SConstructorPat constructor pats) =
   CConstructorPat (toCoreConstructor constructor) $ toCorePat <$> pats
 
 toCoreDef :: SDef -> Result CDef
 toCoreDef def@(SDef name params rhs) = do
   cRhs <- toCoreExpr rhs
   let cParams = toCorePat <$> params
-      mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc  
+      mkLambdaExpr param' acc = CLambdaExpr $ CLambda param' acc
   return $ CDef (toCoreVar name) (foldr mkLambdaExpr cRhs cParams) (display def)

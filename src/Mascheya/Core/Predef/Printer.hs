@@ -1,15 +1,15 @@
 module Mascheya.Core.Predef.Printer where
-  
-import Mascheya.Core.Eval.Value 
+
 import Control.Monad.Except (runExceptT)
-import Mascheya.Core.Display (Display(display))
-import Prelude hiding (print)
-import Mascheya.Core.Eval (force, evalExpr)
-import qualified Mascheya.Core.Lexemes as Lexemes
-import Control.Monad.Reader (ReaderT(runReaderT))
-import Mascheya.Core.Result (Result)
+import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.List (intersperse)
+import Mascheya.Core.Display (Display (display))
+import Mascheya.Core.Eval (evalExpr, force)
+import Mascheya.Core.Eval.Value
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Result (Result)
 import qualified Mascheya.Core.Result as Result
+import Prelude hiding (print)
 
 type Print a = a -> IO ()
 
@@ -19,7 +19,7 @@ print = printWith putSuccess
 printLn :: VEnv -> Print Value
 printLn = printWith putSuccessLn
 
--- | Eagerly prints the value using the given printing function. 
+-- | Eagerly prints the value using the given printing function.
 -- Right now, we don't have a `show` function yet, so let's just print the value directly,
 -- forcing every thunks to be evaluated.
 -- TODO: Implement `show` and define this function in terms of it.
@@ -48,14 +48,17 @@ printWith print' env (ListVal (Cons hTh tTh)) = do
         printWith print' env t
         print' [Lexemes.rightParen]
       _ -> putErrorLn "Tail is not a list"
-  printErrorOr (const $ pure ()) result 
+  printErrorOr (const $ pure ()) result
 printWith print' _ (DefNelVal _) = print' Lexemes.unit
 printWith print' env (ProdVal (Product name comps)) = do
   print' name
   result <- runExceptT $ sequence $ flip runReaderT env . evalExpr <$> comps
-  printErrorOr (\values -> case values of
-    [] -> pure ()
-    xs -> sequence_ $ intersperse (print' [Lexemes.comma]) $ printWith print' env <$> xs) result
+  printErrorOr
+    ( \values -> case values of
+        [] -> pure ()
+        xs -> sequence_ $ intersperse (print' [Lexemes.comma]) $ printWith print' env <$> xs
+    )
+    result
 printWith _ _ (MatchFailVal (MatchFail at)) = putErrorLn $ display $ Result.matchError at
 printWith _ _ (BottomVal (Bottom at)) = putErrorLn $ display $ Result.undefinedCalled at
 
