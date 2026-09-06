@@ -1,13 +1,13 @@
 module Mascheya.Core.Parser.Prog where
 
-import Mascheya.Core.Ast.Source 
 import Control.Applicative ((<|>))
-import Mascheya.Core.Parser.Core 
-import Mascheya.Core.Parser.Primitives 
-import qualified Mascheya.Core.Lexemes as Lexemes
-import Prelude hiding (repeat)
-import Mascheya.Core.Result (Loc)
 import Data.List.NonEmpty (fromList)
+import Mascheya.Core.Ast.Source
+import qualified Mascheya.Core.Lexemes as Lexemes
+import Mascheya.Core.Parser.Core
+import Mascheya.Core.Parser.Primitives
+import Mascheya.Core.Result (Loc)
+import Prelude hiding (repeat)
 
 program :: Parser SProg
 program = defListProg <|> exprProg
@@ -17,22 +17,24 @@ program = defListProg <|> exprProg
 
 expr :: Parser SExpr
 expr = expr' <|> inParens expr'
-  where 
+  where
     expr' = lambdaExpr <|> compExpr
     lambdaExpr = SLambdaExpr <$> lambda
 
 definition :: Parser SDef
-definition = (\(((v, ps), _), rhs) -> SDef v ps rhs) 
-  <$> (var <&> params <&> inSpaces0 equals <&> expr)
-  where 
+definition =
+  (\(((v, ps), _), rhs) -> SDef v ps rhs)
+    <$> (var <&> params <&> inSpaces0 equals <&> expr)
+  where
     params = repSepBy0 spaces pattern
 
 lambda :: Parser SLambda
-lambda = (\(((_, params), _), body) -> SLambda params body)
-  <$> matchChar Lexemes.lambdaSymbol 
-  <&> repSepBy spaces pattern 
-  <&> inSpaces rightArrow 
-  <&> expr
+lambda =
+  (\(((_, params), _), body) -> SLambda params body)
+    <$> matchChar Lexemes.lambdaSymbol
+      <&> repSepBy spaces pattern
+      <&> inSpaces rightArrow
+      <&> expr
 
 pattern :: Parser SPat
 pattern = varPat <|> litPat
@@ -49,31 +51,31 @@ compExpr = toInfix $ factor' <&> restA
 arithExpr :: Parser SExpr
 arithExpr = toInfix $ term <&> restT
   where
-    restT = repeat0 $ inSpaces0 plusOrMinusExpr <&> term 
+    restT = repeat0 $ inSpaces0 plusOrMinusExpr <&> term
     term = toInfix $ factor' <&> restF
     restF = repeat0 $ inSpaces0 termOpExpr <&> factor'
-    factor' = letExpr <|> (inParens arithExpr) 
+    factor' = letExpr <|> (inParens arithExpr)
 
 letExpr :: Parser SExpr
 letExpr = let' <|> appExpr
-  where 
-    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces defNel <&> in'    
+  where
+    let' = toLet <$> matchStr Lexemes.letKw <&> inSpaces defNel <&> in'
     in' = snd <$> matchStr Lexemes.inKw <&> spaces <&> expr
     toLet ((_, defs), expr') = SLetExpr $ SLet defs expr'
 
 appExpr :: Parser SExpr
 appExpr = toExpr <$> (track $ factor' <&> args')
-  where 
+  where
     factor' = call <|> (inParens $ appExpr)
     call = factor <|> (inParens expr)
     args' = repSepBy0 spaces call
 
     toExpr ((f, []), _) = f
-    toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at 
+    toExpr ((f, as), at) = SAppExpr $ SApp f (fromList as) at
 
 factor :: Parser SExpr
 factor = factor' <|> inParens factor'
-  where 
+  where
     factor' = variable <|> literal
     literal = SLitExpr <$> lit
     variable = SVarExpr <$> var
@@ -82,7 +84,7 @@ var :: Parser SVar
 var = (uncurry SVar) <$> functionId
 
 lit :: Parser SLit
-lit = numLit <|> charLit <|> boolLit 
+lit = numLit <|> charLit <|> boolLit
   where
     numLit = SNumLit <$> num
     charLit = SCharLit <$> char
@@ -105,8 +107,11 @@ float :: Parser SFloat
 float = parseMap SFloat rawFloat
 
 char :: Parser SChar
-char = (\((_, content), _) -> SChar content) <$> singleQuote 
-  <&> (escaped <|> unescaped) <&> singleQuote
+char =
+  (\((_, content), _) -> SChar content)
+    <$> singleQuote
+      <&> (escaped <|> unescaped)
+      <&> singleQuote
 
 bool :: Parser SBool
 bool = sTrue <|> sFalse
@@ -151,6 +156,6 @@ trackedCharToVar :: (Char, Loc) -> SVar
 trackedCharToVar (c, l) = SVar [c] l
 
 toInfix :: Parser (SExpr, [(SVar, SExpr)]) -> Parser SExpr
-toInfix = ((\(base,  fs) -> foldl' combine base fs) <$>) 
+toInfix = ((\(base, fs) -> foldl' combine base fs) <$>)
   where
-    combine acc (op, e) =  SInfixExpr $ SInfix acc op e
+    combine acc (op, e) = SInfixExpr $ SInfix acc op e

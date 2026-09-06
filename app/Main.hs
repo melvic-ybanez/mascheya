@@ -1,11 +1,10 @@
 module Main where
 
-import Mascheya.Core.Repl
-import qualified Mascheya.Core.Predef as Predef
 import Control.Monad.Except (runExceptT)
-import Control.Monad.ST (stToIO)
-import Mascheya.Core.Display (Display(display))
+import Mascheya.Core.Display (Display (display))
 import qualified Mascheya.Core.Eval.Env as Env
+import qualified Mascheya.Core.Predef as Predef
+import Mascheya.Core.Repl
 
 main :: IO ()
 main = do
@@ -13,4 +12,4 @@ main = do
   env <- case result of
     Left err -> (putStrLn $ display err) >> return Env.empty
     Right e -> return e
-  repl State { lineMode = Single } env
+  repl State {lineMode = Single} env
