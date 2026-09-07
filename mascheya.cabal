@@ -60,6 +60,8 @@ test-suite spec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Mascheya.ArithSpec
+      Mascheya.Common
       Mascheya.ConstSpec
       Paths_mascheya
   hs-source-dirs:

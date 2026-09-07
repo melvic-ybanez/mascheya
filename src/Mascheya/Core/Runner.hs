@@ -12,6 +12,7 @@ import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Eval.Value (Def (Def), VEnv, Value (DefNelVal))
 import qualified Mascheya.Core.Parser as Parser
 import Mascheya.Core.Predef (Print)
+import qualified Mascheya.Core.Predef as Predef
 import qualified Mascheya.Core.Predef.Printer as Printer
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Translate as Translate
@@ -31,4 +32,6 @@ run print' input env = do
     Right (val, newEnv) -> Printer.printWith print' newEnv val >> pure newEnv
 
 runDefault :: Print String -> String -> IO VEnv
-runDefault print' = flip (run print') Env.empty
+runDefault print' input = do
+  env <- Predef.init Env.empty
+  run print' input env

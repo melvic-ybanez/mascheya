@@ -4,15 +4,15 @@ module Mascheya.Core.Predef
   )
 where
 
+import Data.IORef (newIORef)
 import Mascheya.Core.Ast.Core
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Eval.Value (Thunk (Thunk), ThunkState (Delayed), VEnv)
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Predef.Printer
-import Mascheya.Core.Result (ResultT, newLiftedRef)
 import Prelude hiding (init)
 
-type Builtin = VEnv -> ResultT IO VEnv
+type Builtin = VEnv -> IO VEnv
 
 init :: Builtin
 init env = initArith env >>= initComp
@@ -41,7 +41,7 @@ initComp env =
 initInfix :: String -> CInfixOp -> Builtin
 initInfix opLexeme infixOp env =
   fmap (\ref -> Env.assign opLexeme (Thunk ref) env) $
-    newLiftedRef env >>= newLiftedRef . Delayed outerClosure
+    newIORef env >>= newIORef . Delayed outerClosure
   where
     a = newDummyVar "a"
     b = newDummyVar "b"
