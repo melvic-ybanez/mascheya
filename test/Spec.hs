@@ -1,5 +1,8 @@
 module Main where
-import Test.Hspec (hspec, shouldBe, describe, it)
+
+import qualified Mascheya.ConstSpec as ConstSpec
+import Test.Hspec (describe, hspec)
 
 main :: IO ()
-main = undefined
+main = hspec $ do
+  describe "Constants" ConstSpec.spec

@@ -29,7 +29,7 @@ instance Display Bool
 instance Display ()
 
 instance Display Char where
-  display c = [c]
+  display c = show c
 
 -- TODO: see if we need to wrap NonEmpty in a separate type, like with the SSV above
 instance (Display a) => Display (NonEmpty a) where

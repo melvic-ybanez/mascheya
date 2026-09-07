@@ -9,15 +9,19 @@ import Mascheya.Core.Eval.Value
 import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Result (Result)
 import qualified Mascheya.Core.Result as Result
+import System.IO (hPutStrLn, stderr)
 import Prelude hiding (print)
 
 type Print a = a -> IO ()
 
 print :: VEnv -> Print Value
-print = printWith putSuccess
+print = printWith putStr
 
 printLn :: VEnv -> Print Value
-printLn = printWith putSuccessLn
+printLn = printWith putStrLn
+
+printSuccessLn :: VEnv -> Print Value
+printSuccessLn = printWith putSuccessLn
 
 -- | Eagerly prints the value using the given printing function.
 -- Right now, we don't have a `show` function yet, so let's just print the value directly,
@@ -49,7 +53,7 @@ printWith print' env (ListVal (Cons hTh tTh)) = do
         print' [Lexemes.rightParen]
       _ -> putErrorLn "Tail is not a list"
   printErrorOr (const $ pure ()) result
-printWith print' _ (DefNelVal _) = print' Lexemes.unit
+printWith _ _ (DefNelVal _) = pure ()
 printWith print' env (ProdVal (Product name comps)) = do
   print' name
   result <- runExceptT $ sequence $ flip runReaderT env . evalExpr <$> comps
@@ -70,7 +74,7 @@ putInfoLn :: Print String
 putInfoLn = putStrLn . brightCyanStr
 
 putErrorLn :: Print String
-putErrorLn = putStrLn . brightRedStr
+putErrorLn = hPutStrLn stderr . brightRedStr
 
 putSuccess :: Print String
 putSuccess = putStr . brightGreenStr

@@ -8,6 +8,7 @@ import Data.IORef (readIORef)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Mascheya.Core.Display (Display (display))
 import qualified Mascheya.Core.Eval as Eval
+import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Eval.Value (Def (Def), VEnv, Value (DefNelVal))
 import qualified Mascheya.Core.Parser as Parser
 import qualified Mascheya.Core.Predef.Printer as Printer
@@ -26,4 +27,7 @@ run input env = do
     ExceptT $ return $ Result.succeed (val, newEnv)
   case result of
     Left error' -> Printer.putErrorLn (display error') >> pure env
-    Right (val, newEnv) -> Printer.printLn newEnv val >> pure newEnv
+    Right (val, newEnv) -> Printer.printSuccessLn newEnv val >> pure newEnv
+
+runDefault :: String -> IO VEnv
+runDefault = flip run Env.empty
