@@ -27,7 +27,6 @@ library
       Mascheya.Core.Predef.Printer
       Mascheya.Core.Repl
       Mascheya.Core.Result
-      Mascheya.Core.Run
       Mascheya.Core.Runner
       Mascheya.Core.Translate
       Mascheya.Core.Translate.FromSource
