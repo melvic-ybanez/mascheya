@@ -14,15 +14,6 @@ import Prelude hiding (print)
 
 type Print a = a -> IO ()
 
-print :: VEnv -> Print Value
-print = printWith putStr
-
-printLn :: VEnv -> Print Value
-printLn = printWith putStrLn
-
-printSuccessLn :: VEnv -> Print Value
-printSuccessLn = printWith putSuccessLn
-
 -- | Eagerly prints the value using the given printing function.
 -- Right now, we don't have a `show` function yet, so let's just print the value directly,
 -- forcing every thunks to be evaluated.

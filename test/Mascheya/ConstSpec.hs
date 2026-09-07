@@ -1,21 +1,23 @@
 module Mascheya.ConstSpec where
 
-import Data.List (isInfixOf)
 import qualified Mascheya.Core.Runner as Runner
 import System.IO (stderr, stdout)
 import System.IO.Silently (hCapture)
-import Test.Hspec (Spec, describe, it, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do
-  let runCapture = hCapture [stdout, stderr] . Runner.runDefault
+  let runCapture = hCapture [stdout, stderr] . Runner.runDefault putStr
   describe "numeric value" $ do
     it "evaluates to itself" $ do
       (output, _) <- runCapture "100"
-      output `shouldSatisfy` ("100" `isInfixOf`)
+      output `shouldBe` "100"
 
       (output, _) <- runCapture "200.56"
-      output `shouldSatisfy` ("200.56" `isInfixOf`)
+      output `shouldBe` "200.56"
 
       (output, _) <- runCapture "'c'"
-      output `shouldSatisfy` ("'c'" `isInfixOf`)
+      output `shouldBe` "'c'"
+
+      (output, _) <- runCapture "'\^A'"
+      output `shouldBe` "'\\SOH'"

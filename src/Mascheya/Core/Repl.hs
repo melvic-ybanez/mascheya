@@ -8,6 +8,7 @@ import qualified Mascheya.Core.Lexemes as Lexemes
 import Mascheya.Core.Parser (Parser, matchChar, spaces, spaces0, word, (<&>))
 import qualified Mascheya.Core.Parser as Parser
 import Mascheya.Core.Predef
+import qualified Mascheya.Core.Predef as Printer
 import qualified Mascheya.Core.Runner as Runner
 import System.Exit (die)
 import System.IO (hFlush, stdout)
@@ -37,7 +38,7 @@ repl state env = do
           processInput $ input ++ restOfInput
         where
           processInput input' = do
-            newEnv <- Runner.run input' env
+            newEnv <- Runner.run Printer.putSuccessLn input' env
             repl state newEnv
       Just rest -> case Parser.parse setArgParser rest of
         Left e -> report $ "Invalid argument pair. " ++ display e

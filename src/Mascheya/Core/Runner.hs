@@ -11,12 +11,13 @@ import qualified Mascheya.Core.Eval as Eval
 import qualified Mascheya.Core.Eval.Env as Env
 import Mascheya.Core.Eval.Value (Def (Def), VEnv, Value (DefNelVal))
 import qualified Mascheya.Core.Parser as Parser
+import Mascheya.Core.Predef (Print)
 import qualified Mascheya.Core.Predef.Printer as Printer
 import qualified Mascheya.Core.Result as Result
 import qualified Mascheya.Core.Translate as Translate
 
-run :: String -> VEnv -> IO VEnv
-run input env = do
+run :: Print String -> String -> VEnv -> IO VEnv
+run print' input env = do
   result <- runExceptT $ do
     sourceProg <- Result.liftT $ Parser.parse Parser.program input
     coreProg <- Result.liftT $ Translate.toCoreProg sourceProg
@@ -27,7 +28,7 @@ run input env = do
     ExceptT $ return $ Result.succeed (val, newEnv)
   case result of
     Left error' -> Printer.putErrorLn (display error') >> pure env
-    Right (val, newEnv) -> Printer.printSuccessLn newEnv val >> pure newEnv
+    Right (val, newEnv) -> Printer.printWith print' newEnv val >> pure newEnv
 
-runDefault :: String -> IO VEnv
-runDefault = flip run Env.empty
+runDefault :: Print String -> String -> IO VEnv
+runDefault print' = flip (run print') Env.empty
