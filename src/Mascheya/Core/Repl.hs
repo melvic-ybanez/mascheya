@@ -1,6 +1,5 @@
 module Mascheya.Core.Repl where
 
-import Data.Char (isSpace)
 import Data.List (intercalate, stripPrefix)
 import Mascheya.Core.Display
 import Mascheya.Core.Eval.Value (VEnv)
@@ -27,7 +26,7 @@ repl state env = do
   hFlush stdout
 
   rawInput <- getLine
-  case trim rawInput of
+  case Parser.trim rawInput of
     ":q" -> die $ brightCyanStr "Bye!"
     input -> case stripPrefix ":set" input of
       Nothing -> case (input, lineMode state) of
@@ -54,14 +53,10 @@ repl state env = do
       where
         recurse lines = do
           rawLine <- getLine
-          let line = trim rawLine
+          let line = Parser.trim rawLine
           if line == "-- end"
             then return $ intercalate [Lexemes.newline] $ reverse lines
             else recurse $ line : lines
-
-    trim = trim' . trim'
-      where
-        trim' = reverse . dropWhile isSpace
 
 setArgParser :: Parser (String, String)
 setArgParser =

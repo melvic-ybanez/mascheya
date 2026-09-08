@@ -6,9 +6,11 @@ module Mascheya.Core.Parser
     module Mascheya.Core.Parser.Primitives,
     module Mascheya.Core.Parser.Prog,
     parse,
+    trim,
   )
 where
 
+import Data.Char (isSpace)
 import Mascheya.Core.Parser.Core
 import Mascheya.Core.Parser.Primitives
 import Mascheya.Core.Parser.Prog
@@ -24,3 +26,8 @@ parse (Parser run') input = do
   case result of
     (val, (State [] _)) -> Result.succeed val
     (_, (State rest line')) -> parseError (Invalid "characters" rest) (Loc line')
+
+trim :: String -> String
+trim = trim' . trim'
+  where
+    trim' = reverse . dropWhile isSpace

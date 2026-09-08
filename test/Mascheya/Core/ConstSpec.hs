@@ -1,18 +1,18 @@
-module Mascheya.ConstSpec where
+module Mascheya.Core.ConstSpec where
 
-import Mascheya.Common (runCheckEqual)
+import Mascheya.TestRunner (runSuccessEquals)
 import Test.Hspec (Spec, describe, it)
 
 spec :: Spec
 spec = do
   describe "numeric value" $ do
     it "evaluates to itself" $ do
-      runCheckEqual "100" "100"
-      runCheckEqual "200.56" "200.56"
+      runSuccessEquals "100" "100"
+      runSuccessEquals "200.56" "200.56"
 
   describe "character" $ do
     it "is wrapped in single quotes" $ do
-      runCheckEqual "'c'" "'c'"
+      runSuccessEquals "'c'" "'c'"
 
     it "supports control codes" $ do
-      runCheckEqual "'\^A'" "'\\SOH'"
+      runSuccessEquals "'\^A'" "'\\SOH'"
